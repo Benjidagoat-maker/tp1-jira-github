@@ -37,7 +37,7 @@ npm run build
 ```
 ## Lancement
 ```bash
-cd C:\Users\kenji\tp1-jira-integration
+cd C:\Users\kenji\tp1-jira-integration or C:\Users\kenji\OneDrive\Documents\GitHub\Tp1
 npm run dev
 ```
 
