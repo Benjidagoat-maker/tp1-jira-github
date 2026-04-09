@@ -1,11 +1,7 @@
 import { forwardRef, type SelectHTMLAttributes } from 'react';
 import { clsx } from 'clsx';
 
-interface SelectOption {
-  value: string;
-  label: string;
-}
-
+interface SelectOption { value: string; label: string }
 interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
   error?: string;
@@ -18,22 +14,28 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <div className="space-y-1.5">
         {label && (
-          <label className="block text-sm font-medium text-slate-300">{label}</label>
+          <label className="block text-sm font-medium"
+            style={{ color: 'var(--text-secondary)' }}>
+            {label}
+          </label>
         )}
         <select
           ref={ref}
           className={clsx(
-            'w-full bg-slate-900/50 border rounded-lg px-3.5 py-2.5 text-slate-100 text-sm',
-            'focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50',
-            'transition-colors duration-150 appearance-none',
-            error ? 'border-red-500/50' : 'border-slate-700/80',
+            'w-full rounded-xl px-4 py-3 text-sm appearance-none',
+            'border transition-all duration-150',
+            'focus:outline-none focus:ring-2',
+            'text-[var(--text-primary)]',
+            error
+              ? 'border-red-500/40 bg-[var(--bg-card)] focus:ring-red-500/20'
+              : 'border-[var(--border)] bg-[var(--bg-card)] focus:border-[rgba(232,168,58,0.4)] focus:ring-[rgba(232,168,58,0.15)]',
             className
           )}
           {...props}
         >
-          {placeholder && <option value="">{placeholder}</option>}
+          {placeholder && <option value="" style={{ background: 'var(--bg-base)' }}>{placeholder}</option>}
           {options.map((opt) => (
-            <option key={opt.value} value={opt.value} className="bg-slate-900">
+            <option key={opt.value} value={opt.value} style={{ background: 'var(--bg-base)' }}>
               {opt.label}
             </option>
           ))}
@@ -43,5 +45,4 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
     );
   }
 );
-
 Select.displayName = 'Select';

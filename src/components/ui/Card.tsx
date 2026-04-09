@@ -5,29 +5,42 @@ interface CardProps {
   children: ReactNode;
   className?: string;
   hover?: boolean;
+  accent?: 'gold' | 'teal' | 'blue' | 'none';
 }
 
-export function Card({ children, className, hover }: CardProps) {
+export function Card({ children, className, hover, accent = 'none' }: CardProps) {
+  const accentStyles = {
+    none: '',
+    gold: 'border-t-[var(--gold)] border-t-2 border-x-[var(--border)] border-b-[var(--border)]',
+    teal: 'border-t-[var(--teal)] border-t-2 border-x-[var(--border)] border-b-[var(--border)]',
+    blue: 'border-t-[var(--blue)] border-t-2 border-x-[var(--border)] border-b-[var(--border)]',
+  };
+
   return (
-    <div
-      className={clsx(
-        'bg-slate-800/60 border border-slate-700/50 rounded-xl p-6 backdrop-blur-sm',
-        hover && 'transition-all duration-200 hover:border-slate-600/80 hover:bg-slate-800/80 hover:-translate-y-0.5',
-        className
-      )}
-    >
+    <div className={clsx(
+      'relative rounded-xl p-6',
+      'bg-[var(--bg-card)] border border-[var(--border)]',
+      accent === 'none' && 'border-[var(--border)]',
+      accentStyles[accent],
+      hover && [
+        'transition-all duration-200 cursor-pointer',
+        'hover:border-[var(--border-light)] hover:bg-[#16203a]',
+        'hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/30',
+      ],
+      className
+    )}>
       {children}
     </div>
   );
 }
 
 export function CardHeader({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={clsx('mb-4', className)}>{children}</div>;
+  return <div className={clsx('mb-5', className)}>{children}</div>;
 }
 
 export function CardTitle({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <h3 className={clsx('font-display font-semibold text-slate-100 text-lg', className)}>
+    <h3 className={clsx('font-display font-bold text-[var(--text-primary)] text-lg tracking-tight', className)}>
       {children}
     </h3>
   );

@@ -12,26 +12,32 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="space-y-1.5">
         {label && (
-          <label className="block text-sm font-medium text-slate-300">
+          <label className="block text-sm font-medium"
+            style={{ color: 'var(--text-secondary)' }}>
             {label}
           </label>
         )}
         <input
           ref={ref}
           className={clsx(
-            'w-full bg-slate-900/50 border rounded-lg px-3.5 py-2.5 text-slate-100 text-sm placeholder:text-slate-500',
-            'focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50',
-            'transition-colors duration-150',
-            error ? 'border-red-500/50' : 'border-slate-700/80',
+            'w-full rounded-xl px-4 py-3 text-sm',
+            'border transition-all duration-150',
+            'focus:outline-none focus:ring-2',
+            'placeholder:text-[var(--text-muted)]',
+            'text-[var(--text-primary)]',
+            error
+              ? 'border-red-500/40 bg-[var(--bg-card)] focus:ring-red-500/20'
+              : 'border-[var(--border)] bg-[var(--bg-card)] focus:border-[rgba(232,168,58,0.4)] focus:ring-[rgba(232,168,58,0.15)]',
             className
           )}
           {...props}
         />
-        {hint && !error && <p className="text-xs text-slate-500">{hint}</p>}
+        {hint && !error && (
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{hint}</p>
+        )}
         {error && <p className="text-xs text-red-400">{error}</p>}
       </div>
     );
   }
 );
-
 Input.displayName = 'Input';
