@@ -154,7 +154,7 @@ export function Home() {
             </Button>
           </Link>
           <a
-            href="https://benji-d-goat1998.atlassian.net/jira/software/projects/SCRUM"
+            href="https://benji-d-goat1998.atlassian.net/jira/software/projects/SCRUM/list?jql=project%20%3D%20SCRUM%20ORDER%20BY%20created%20DESC"
             target="_blank" rel="noopener noreferrer"
           >
             <Button variant="ghost" size="lg">
@@ -279,7 +279,7 @@ export function Home() {
           </span>
         </div>
         <a
-          href="https://benji-d-goat1998.atlassian.net/jira/software/projects/SCRUM"
+          href="https://benji-d-goat1998.atlassian.net/jira/software/projects/SCRUM/list?jql=project%20%3D%20SCRUM%20ORDER%20BY%20created%20DESC"
           target="_blank" rel="noopener noreferrer"
           className="font-mono text-xs text-[var(--text-muted)] hover:text-[var(--gold)] transition-colors"
         >
