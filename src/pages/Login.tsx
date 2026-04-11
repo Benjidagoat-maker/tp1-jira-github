@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Eye, EyeOff, ArrowLeft, Zap } from 'lucide-react';
+import { Eye, EyeOff, ArrowLeft, Zap, AlertCircle } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -27,29 +27,65 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 const roleOptions = [
-  { value: 'etudiant', label: '🎓 Étudiant' },
-  { value: 'tuteur', label: '👨‍🏫 Tuteur' },
-  { value: 'coordinateur', label: '🗂️ Coordinateur pédagogique' },
-  { value: 'jury', label: '⚖️ Membre du Jury' },
+  { value: 'etudiant', label: 'Etudiant' },
+  { value: 'tuteur', label: 'Tuteur' },
+  { value: 'coordinateur', label: 'Coordinateur pedagogique' },
+  { value: 'jury', label: 'Membre du Jury' },
 ];
 
 export function Login() {
   const [showPassword, setShowPassword] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const navigate = useNavigate();
-  const login = useAuthStore((s) => s.login);
+  const { login, register: registerUser, error, clearError } = useAuthStore();
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
+    reset,
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    await new Promise((r) => setTimeout(r, 600)); // simulate API call
-    login(data.email, data.role as Role);
-    navigate('/dashboard');
+    setAuthError(null);
+    clearError();
+    
+    try {
+      if (isSignUp) {
+        const name = data.email.split('@')[0].replace('.', ' ');
+        await registerUser(data.email, data.password, name, data.role as Role);
+      } else {
+        await login(data.email, data.password, data.role as Role);
+      }
+      navigate('/dashboard');
+    } catch (err) {
+      if (err instanceof Error) {
+        // Parse Firebase error messages
+        let message = err.message;
+        if (message.includes('auth/invalid-credential') || message.includes('auth/wrong-password')) {
+          message = 'Email ou mot de passe incorrect';
+        } else if (message.includes('auth/user-not-found')) {
+          message = 'Aucun compte trouvé avec cet email';
+        } else if (message.includes('auth/too-many-requests')) {
+          message = 'Trop de tentatives. Veuillez réessayer plus tard';
+        } else if (message.includes('auth/network-request-failed')) {
+          message = 'Erreur de connexion réseau';
+        } else if (message.includes('auth/email-already-in-use')) {
+          message = 'Cette adresse email est déjà utilisée';
+        }
+        setAuthError(message);
+      }
+    }
+  };
+
+  const toggleMode = () => {
+    setIsSignUp(!isSignUp);
+    setAuthError(null);
+    clearError();
+    reset();
   };
 
   return (
@@ -75,13 +111,23 @@ export function Login() {
               <Zap className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h1 className="font-display font-bold text-2xl text-slate-100">Connexion</h1>
-              <p className="text-slate-400 text-sm mt-1">Plateforme PF – FST-SBZ</p>
+              <h1 className="font-display font-bold text-2xl text-slate-100">
+                {isSignUp ? 'Créer un compte' : 'Connexion'}
+              </h1>
+              <p className="text-slate-400 text-sm mt-1">Plateforme PF - FST-SBZ</p>
             </div>
           </div>
 
           {/* Form card */}
           <div className="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-8 backdrop-blur-sm shadow-2xl">
+            {/* Error Alert */}
+            {(authError || error) && (
+              <div className="mb-5 flex items-start gap-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+                <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                <p className="text-sm text-red-400">{authError || error}</p>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
               {/* Role selector */}
               <Select
@@ -108,7 +154,7 @@ export function Login() {
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="••••••••"
+                    placeholder="Minimum 6 caractères"
                     className={`w-full bg-slate-900/50 border rounded-lg px-3.5 py-2.5 text-slate-100 text-sm placeholder:text-slate-500 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-colors ${
                       errors.password ? 'border-red-500/50' : 'border-slate-700/80'
                     }`}
@@ -128,13 +174,28 @@ export function Login() {
               </div>
 
               <Button type="submit" className="w-full" size="lg" loading={isSubmitting}>
-                {isSubmitting ? 'Connexion en cours...' : 'Se connecter'}
+                {isSubmitting
+                  ? (isSignUp ? 'Création en cours...' : 'Connexion en cours...')
+                  : (isSignUp ? "S'inscrire" : 'Se connecter')}
               </Button>
             </form>
+
+            {/* Toggle Sign In / Sign Up */}
+            <div className="mt-6 text-center">
+              <button
+                type="button"
+                onClick={toggleMode}
+                className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                {isSignUp
+                  ? 'Déjà un compte ? Se connecter'
+                  : "Pas de compte ? S'inscrire"}
+              </button>
+            </div>
           </div>
 
           <p className="text-center text-xs text-slate-500">
-            Projet Fédéré SI2 · Université de Kairouan
+            Projet Fédéré SI2 - Université de Kairouan
           </p>
         </div>
       </div>
