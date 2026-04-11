@@ -47,10 +47,13 @@ export function Login() {
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    await new Promise((r) => setTimeout(r, 600)); // simulate API call
-    login(data.email, data.role as Role);
+  try {
+    await login(data.email, data.password, data.role); // Now calls real Firebase!
     navigate('/dashboard');
-  };
+  } catch (error: any) {
+    console.error('Login failed:', error.message);
+  }
+};
 
   return (
     <div className="min-h-screen bg-slate-900 flex flex-col">

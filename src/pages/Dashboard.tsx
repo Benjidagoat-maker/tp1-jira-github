@@ -50,8 +50,8 @@ function EtudiantDashboard() {
         </div>
       </Card>
       <div className="flex gap-3">
-        <Link to="/projets"><Button variant="secondary" size="sm">Voir mes projets <ArrowRight className="w-3.5 h-3.5" /></Button></Link>
-        <Link to="/compte-rendus"><Button variant="secondary" size="sm">Compte-rendus <ArrowRight className="w-3.5 h-3.5" /></Button></Link>
+        <Link to="/projets"><Button variant="ghost" size="sm">Voir mes projets <ArrowRight className="w-3.5 h-3.5" /></Button></Link>
+        <Link to="/compte-rendus"><Button variant="ghost" size="sm">Compte-rendus <ArrowRight className="w-3.5 h-3.5" /></Button></Link>
       </div>
     </div>
   );
@@ -195,7 +195,7 @@ function JuryDashboard() {
         </div>
       </Card>
       <Link to="/soutenance">
-        <Button variant="secondary" size="sm">Voir toutes les soutenances <ArrowRight className="w-3.5 h-3.5" /></Button>
+        <Button variant="ghost" size="sm">Voir toutes les soutenances <ArrowRight className="w-3.5 h-3.5" /></Button>
       </Link>
     </div>
   );
