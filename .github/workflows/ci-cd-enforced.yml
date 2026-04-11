@@ -1,0 +1,75 @@
+name: CI/CD Enforced Pipeline
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  lint-commits:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Validate PR commit messages
+        uses: wagoid/commitlint-github-action@v6
+        with:
+          configFile: .commitlintrc.json
+          failOnWarnings: false
+
+  auto-tag-release:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: lint-commits
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine version bump from SCRUM commits
+        id: bump
+        shell: bash
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          COMMITS=$(git log "$LAST_TAG"..HEAD --pretty=format:"%s" --grep="^SCRUM-[0-9]+")
+          BUMP="patch"
+          if echo "$COMMITS" | grep -qiE "SCRUM-[0-9]+-[Mm]ajor|BREAKING CHANGE"; then
+            BUMP="major"
+          elif echo "$COMMITS" | grep -qiE "SCRUM-[0-9]+-[Mm]inor|feat:"; then
+            BUMP="minor"
+          fi
+          echo "bump=$BUMP" >> $GITHUB_OUTPUT
+
+      - name: Bump version & create tag
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          default_bump: ${{ steps.bump.outputs.bump }}
+          tag_prefix: v
+          release_branches: main
+          create_annotated_tag: true
+          custom_release_rules: |
+            SCRUM-[0-9]+-[Mm]ajor:major:Major SCRUM Features,
+            SCRUM-[0-9]+-[Mm]inor:minor:Minor SCRUM Features,
+            SCRUM-[0-9]+-[Ff]ix:patch:Bug Fixes
+
+      - name: Create GitHub Release
+        if: steps.tag_version.outputs.new_tag
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.tag_version.outputs.new_tag }}
+          name: "🚀 Release ${{ steps.tag_version.outputs.new_tag }}"
+          body: "Auto-generated release from CI/CD pipeline"
+          draft: false
+          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}
