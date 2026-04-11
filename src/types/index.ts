@@ -32,6 +32,7 @@ export interface Project {
   tuteur?: string;
   createdAt: string;
   jiraKey?: string;
+  feedback?: string;
 }
 
 export interface CompteRendu {
