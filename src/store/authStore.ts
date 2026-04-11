@@ -7,6 +7,7 @@ interface AuthState {
   isAuthenticated: boolean;
   login: (email: string, role: Role) => void;
   logout: () => void;
+  checkAuth: () => (() => void) | undefined; // ← Add this type
 }
 
 const roleNames: Record<Role, string> = {
@@ -18,7 +19,7 @@ const roleNames: Record<Role, string> = {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       isAuthenticated: false,
       login: (email: string, role: Role) => {
@@ -31,6 +32,18 @@ export const useAuthStore = create<AuthState>()(
         set({ user, isAuthenticated: true });
       },
       logout: () => set({ user: null, isAuthenticated: false }),
+      
+      // ← Add this checkAuth function
+      checkAuth: () => {
+        // Check if user exists in persisted storage on mount
+        const state = get();
+        if (state.user && state.isAuthenticated) {
+          // Optionally validate token/session here
+          return; // No cleanup needed
+        }
+        // If no valid session, you could auto-logout or redirect
+        return () => {}; // Return noop cleanup function
+      },
     }),
     { name: 'auth-store' }
   )
