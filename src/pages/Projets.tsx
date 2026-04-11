@@ -79,7 +79,6 @@ const statusCfg: Record<ProjectStatus, { label: string; variant: 'default'|'succ
 
 /* ── Sub-components ─────────────────────────── */
 
-/** Inline edit form for a project (SCRUM-28) */
 function EditForm({ project, onSave, onCancel }: {
   project: Project; onSave: (data: ProjectFormData) => void; onCancel: () => void;
 }) {
@@ -119,7 +118,6 @@ function EditForm({ project, onSave, onCancel }: {
   );
 }
 
-/** Tutor feedback panel: validate / reject with comment (SCRUM-32/33) */
 function TutorActions({ project, onValidate, onReject }: {
   project: Project;
   onValidate: (id: string) => void;
@@ -161,7 +159,6 @@ function TutorActions({ project, onValidate, onReject }: {
   );
 }
 
-/** Coordinator tutor assignment (SCRUM-34) */
 function CoordActions({ project, onAssign }: {
   project: Project; onAssign: (id: string, tuteur: string) => void;
 }) {
@@ -207,7 +204,6 @@ export function Projets() {
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } =
     useForm<ProjectFormData>({ resolver: zodResolver(projectSchema) });
 
-  /* actions */
   const onSubmit = async (data: ProjectFormData) => {
     await new Promise(r => setTimeout(r, 700));
     const p: Project = {
@@ -247,7 +243,6 @@ export function Projets() {
     setProjects(prev => prev.map(p => p.id === id ? { ...p, tuteur } : p));
   };
 
-  /* filter per role */
   const visible = role === 'etudiant'
     ? projects.filter(p => p.submittedBy === 'Ahmed Ben Salah' || p.submittedBy === user?.name)
     : role === 'tuteur'
@@ -256,7 +251,6 @@ export function Projets() {
 
   return (
     <div className="space-y-6 max-w-4xl">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display font-bold text-2xl text-[var(--text-primary)]">Projets</h1>
@@ -273,7 +267,6 @@ export function Projets() {
         )}
       </div>
 
-      {/* Submission form (student only) */}
       {showForm && role === 'etudiant' && (
         <Card accent="gold">
           <CardHeader><CardTitle>Proposer un projet</CardTitle></CardHeader>
@@ -309,7 +302,6 @@ export function Projets() {
         </Card>
       )}
 
-      {/* Status summary */}
       <div className="grid grid-cols-4 gap-3">
         {(['en_attente','valide','en_cours','refuse'] as ProjectStatus[]).map(status => {
           const count = visible.filter(p => p.status === status).length;
@@ -323,7 +315,6 @@ export function Projets() {
         })}
       </div>
 
-      {/* Project list */}
       <div className="space-y-3">
         {visible.length === 0 && (
           <Card><p className="text-sm text-center text-[var(--text-muted)] py-4">Aucun projet à afficher.</p></Card>
@@ -338,7 +329,6 @@ export function Projets() {
 
           return (
             <Card key={project.id} hover>
-              {/* Row header */}
               <div className="flex items-center justify-between cursor-pointer"
                 onClick={() => setExpandedId(isExpanded ? null : project.id)}>
                 <div className="flex items-center gap-3 min-w-0">
@@ -364,12 +354,10 @@ export function Projets() {
                 </div>
               </div>
 
-              {/* Expanded body */}
               {isExpanded && !isEditing && (
                 <div className="mt-4 pt-4 border-t border-[var(--border)] space-y-3">
                   <p className="text-sm text-[var(--text-secondary)]">{project.description}</p>
 
-                  {/* Tutor feedback (SCRUM-29) */}
                   {project.feedback && (
                     <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/5 border border-red-500/20">
                       <MessageSquare className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
@@ -380,7 +368,6 @@ export function Projets() {
                     </div>
                   )}
 
-                  {/* Technologies */}
                   <div className="flex flex-wrap gap-1.5">
                     {project.technologies.map(t => (
                       <span key={t} className="px-2 py-0.5 rounded text-xs font-mono border
@@ -401,7 +388,6 @@ export function Projets() {
                     )}
                   </div>
 
-                  {/* Student: edit button (SCRUM-28) */}
                   {canEdit && (
                     <div className="flex gap-2 pt-1">
                       <Button variant="ghost" size="sm" onClick={() => setEditingId(project.id)}>
@@ -410,7 +396,6 @@ export function Projets() {
                     </div>
                   )}
 
-                  {/* Student: re-submit after refus (SCRUM-30) */}
                   {canResubmit && (
                     <div className="flex gap-2 pt-1">
                       <Button variant="gold" size="sm" onClick={() => onResubmit(project.id)}>
@@ -419,19 +404,16 @@ export function Projets() {
                     </div>
                   )}
 
-                  {/* Tutor: validate / reject (SCRUM-32/33) */}
                   {role === 'tuteur' && project.status === 'en_attente' && (
                     <TutorActions project={project} onValidate={onValidate} onReject={onReject} />
                   )}
 
-                  {/* Coordinator: assign tutor (SCRUM-34) */}
                   {role === 'coordinateur' && (
                     <CoordActions project={project} onAssign={onAssign} />
                   )}
                 </div>
               )}
 
-              {/* Inline edit form (SCRUM-28) */}
               {isExpanded && isEditing && (
                 <EditForm
                   project={project}
