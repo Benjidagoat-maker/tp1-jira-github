@@ -23,24 +23,10 @@
 
 ---
 
-## Installation
-
-```bash
-# Installer les dépendances
-npm install
-
-# Lancer en développement
-npm run dev
-
-# Build de production
-npm run build
-```
-## Lancement
-```bash
-cd C:\Users\kenji\tp1-jira-integration or C:\Users\kenji\OneDrive\Documents\GitHub\Tp1
-npm run dev
-```
-
+🌐 Application en ligne
+Accédez à la plateforme directement depuis votre navigateur — aucune installation requise :
+👉 https://tp1-jira-github.vercel.app
+---
 
 ## Structure du projet
 
