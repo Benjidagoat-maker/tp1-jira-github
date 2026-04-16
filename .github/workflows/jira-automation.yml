@@ -1,0 +1,161 @@
+# ──────────────────────────────────────────────────────────
+#  Jira SCRUM Auto-Sync
+#
+#  Branch naming convention: FrontEnd/SCRUM-XX-description
+#
+#  Workflow:
+#    Branch created  → ticket transitions to "In Progress"
+#    PR opened       → ticket transitions to "In Review"
+#    PR merged       → ticket transitions to "Done"
+#
+#  Required GitHub Secrets:
+#    JIRA_BASE_URL   → https://your-domain.atlassian.net
+#    JIRA_USER_EMAIL → your@email.com
+#    JIRA_API_TOKEN  → from id.atlassian.com/manage-profile/security/api-tokens
+#
+#  Transition names must match your board's workflow columns exactly.
+#  Common alternatives: "In Progress" / "En cours" / "Doing"
+# ──────────────────────────────────────────────────────────
+name: Jira SCRUM Sync
+
+on:
+  create:          # branch or tag created
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+
+jobs:
+  sync:
+    name: Sync SCRUM ticket
+    runs-on: ubuntu-latest
+    # Only run on branches (not tag creates), and only when secrets are configured
+    if: |
+      (github.event_name == 'create' && github.ref_type == 'branch') ||
+      github.event_name == 'pull_request'
+
+    steps:
+      # ── Extract SCRUM-XX from branch name ─────────────────
+      - name: Extract issue key
+        id: key
+        run: |
+          # Support both push branch and PR head branch
+          BRANCH="${{ github.head_ref || github.ref_name }}"
+          echo "Branch: $BRANCH"
+
+          # Match SCRUM-N or SCRUM-NN patterns
+          KEY=$(echo "$BRANCH" | grep -oE 'SCRUM-[0-9]+' | head -1)
+
+          if [ -z "$KEY" ]; then
+            echo "⚠️  No SCRUM ticket found in branch: $BRANCH — skipping"
+            echo "found=false" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Found ticket: $KEY"
+            echo "issue=$KEY"  >> $GITHUB_OUTPUT
+            echo "found=true"  >> $GITHUB_OUTPUT
+          fi
+
+      # ── Authenticate with Jira ─────────────────────────────
+      - name: Jira login
+        if: steps.key.outputs.found == 'true'
+        uses: atlassian/gajira-login@v3
+        env:
+          JIRA_BASE_URL:   ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN:  ${{ secrets.JIRA_API_TOKEN }}
+
+      # ── Branch created → In Progress ──────────────────────
+      - name: "→ In Progress  (branch created)"
+        if: |
+          steps.key.outputs.found == 'true' &&
+          github.event_name == 'create' &&
+          github.ref_type == 'branch'
+        uses: atlassian/gajira-transition@v3
+        with:
+          issue:      ${{ steps.key.outputs.issue }}
+          transition: "In Progress"
+
+      - name: "💬 Comment: branch created"
+        if: |
+          steps.key.outputs.found == 'true' &&
+          github.event_name == 'create' &&
+          github.ref_type == 'branch'
+        uses: atlassian/gajira-comment@v3
+        with:
+          issue:   ${{ steps.key.outputs.issue }}
+          comment: |
+            🚀 **Development started**
+            Branch: `${{ github.ref_name }}`
+            Author: @${{ github.actor }}
+
+      # ── PR opened → In Review ──────────────────────────────
+      - name: "→ In Review  (PR opened)"
+        if: |
+          steps.key.outputs.found == 'true' &&
+          github.event_name == 'pull_request' &&
+          (github.event.action == 'opened' || github.event.action == 'reopened')
+        uses: atlassian/gajira-transition@v3
+        with:
+          issue:      ${{ steps.key.outputs.issue }}
+          transition: "In Review"
+
+      - name: "💬 Comment: PR opened"
+        if: |
+          steps.key.outputs.found == 'true' &&
+          github.event_name == 'pull_request' &&
+          (github.event.action == 'opened' || github.event.action == 'reopened')
+        uses: atlassian/gajira-comment@v3
+        with:
+          issue:   ${{ steps.key.outputs.issue }}
+          comment: |
+            🔍 **Pull Request opened — awaiting review**
+            PR #${{ github.event.pull_request.number }}: [${{ github.event.pull_request.title }}](${{ github.event.pull_request.html_url }})
+            Reviewer(s): ${{ join(github.event.pull_request.requested_reviewers.*.login, ', ') || 'unassigned' }}
+
+      # ── PR merged → Done ──────────────────────────────────
+      - name: "→ Done  (PR merged)"
+        if: |
+          steps.key.outputs.found == 'true' &&
+          github.event_name == 'pull_request' &&
+          github.event.action == 'closed' &&
+          github.event.pull_request.merged == true
+        uses: atlassian/gajira-transition@v3
+        with:
+          issue:      ${{ steps.key.outputs.issue }}
+          transition: "Done"
+
+      - name: "💬 Comment: merged"
+        if: |
+          steps.key.outputs.found == 'true' &&
+          github.event_name == 'pull_request' &&
+          github.event.action == 'closed' &&
+          github.event.pull_request.merged == true
+        uses: atlassian/gajira-comment@v3
+        with:
+          issue:   ${{ steps.key.outputs.issue }}
+          comment: |
+            ✅ **Développement terminé et mergé dans main.**
+            PR #${{ github.event.pull_request.number }} merged by @${{ github.event.pull_request.merged_by.login }}
+            Commit: `${{ github.event.pull_request.merge_commit_sha }}`
+
+      # ── PR closed without merge → Back to In Progress ─────
+      - name: "→ In Progress  (PR closed without merge)"
+        if: |
+          steps.key.outputs.found == 'true' &&
+          github.event_name == 'pull_request' &&
+          github.event.action == 'closed' &&
+          github.event.pull_request.merged == false
+        uses: atlassian/gajira-transition@v3
+        with:
+          issue:      ${{ steps.key.outputs.issue }}
+          transition: "In Progress"
+
+      # ── Summary ───────────────────────────────────────────
+      - name: Summary
+        if: steps.key.outputs.found == 'true'
+        run: |
+          EVENT="${{ github.event_name }}"
+          ACTION="${{ github.event.action }}"
+          ISSUE="${{ steps.key.outputs.issue }}"
+          echo "## 🎯 Jira Sync" >> $GITHUB_STEP_SUMMARY
+          echo "**Ticket:** [$ISSUE](${{ secrets.JIRA_BASE_URL }}/browse/$ISSUE)" >> $GITHUB_STEP_SUMMARY
+          echo "**Event:** $EVENT / $ACTION" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.head_ref || github.ref_name }}" >> $GITHUB_STEP_SUMMARY

@@ -1,48 +1,56 @@
+# ──────────────────────────────────────────────────────────
+#  Auto Tag Version — fixed & improved
+#  Uses mathieudutour/github-tag-action (battle-tested)
+#  Bumps patch on every merge to main.
+#  Add "[major]" or "[minor]" in commit message to override.
+# ──────────────────────────────────────────────────────────
 name: Auto Tag Version
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+    # Don't retrigger on commits that only changed workflow files
+    paths-ignore:
+      - ".github/**"
+      - "*.md"
 
 permissions:
   contents: write
 
 jobs:
   tag:
+    name: Bump & push semver tag
     runs-on: ubuntu-latest
+    # Skip bot-generated commits to prevent infinite loops
+    if: |
+      !contains(github.event.head_commit.message, '[skip ci]') &&
+      !startsWith(github.event.head_commit.message, 'chore(release)') &&
+      github.actor != 'github-actions[bot]'
+
     steps:
-      - name: Checkout (full history + tags)
-        uses: actions/checkout@v3
+      - name: Checkout (full history + all tags)
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # ← ESSENTIEL : récupère tous les tags
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Get latest tag and bump patch
-        id: version
+      - name: Bump version and push tag
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          default_bump: patch          # [major] / [minor] in commit msg overrides
+          release_branches: main
+          tag_prefix: v
+          # Prevent duplicate tags if workflow runs twice
+          create_annotated_tag: false
+
+      - name: Job summary
         run: |
-          # Chercher le dernier tag sémantique vX.Y.Z
-          LATEST=$(git tag -l "v*.*.*" --sort=-v:refname | head -n 1)
-
-          if [ -z "$LATEST" ]; then
-            NEW_TAG="v0.0.1"
-          else
-            # Extraire les composants de façon sécurisée
-            VERSION="${LATEST#v}"
-            MAJOR=$(echo "$VERSION" | cut -d. -f1)
-            MINOR=$(echo "$VERSION" | cut -d. -f2)
-            PATCH=$(echo "$VERSION" | cut -d. -f3)
-            PATCH=$((PATCH + 1))
-            NEW_TAG="v${MAJOR}.${MINOR}.${PATCH}"
-          fi
-
-          echo "latest=$LATEST"
-          echo "new_tag=$NEW_TAG"
-          echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
-
-      - name: Create and push tag
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag ${{ steps.version.outputs.new_tag }}
-          git push origin ${{ steps.version.outputs.new_tag }}
-          echo "✓ Tag créé : ${{ steps.version.outputs.new_tag }}"
+          echo "## 🏷️ Version Tag" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| | |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Previous | \`${{ steps.tag_version.outputs.previous_tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **New**   | \`${{ steps.tag_version.outputs.new_tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Type      | ${{ steps.tag_version.outputs.release_type }} |" >> $GITHUB_STEP_SUMMARY

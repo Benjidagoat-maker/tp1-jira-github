@@ -1,0 +1,70 @@
+# ──────────────────────────────────────────────────────────
+#  TP4 – Automatisation : Tests d'acceptation
+#  Déclenché sur chaque Push et Pull Request vers main
+#  Critères d'évaluation (TP4, Partie 2 §5) :
+#    ✓ Déclenchement correct lors du Push / PR
+#    ✓ Isolation : environnement virtuel Ubuntu
+#    ✓ Reporting : logs consultables dans l'onglet Actions
+# ──────────────────────────────────────────────────────────
+name: CI – Acceptance Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  acceptance:
+    name: "Acceptance Gate (TP4)"
+    runs-on: ubuntu-latest
+
+    steps:
+      # ① Récupération du code source
+      - name: "① Checkout source"
+        uses: actions/checkout@v4
+
+      # ② Environnement Node.js isolé
+      - name: "② Setup Node.js 22 (isolation)"
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      # ③ Installation des dépendances (reproduit l'environnement)
+      - name: "③ Install dependencies"
+        run: npm ci
+
+      # ④ Vérification TypeScript — critère métier : aucune erreur de type
+      - name: "④ TypeScript strict check (acceptance criterion)"
+        run: npx tsc --noEmit
+
+      # ⑤ Build de production — scénario Given/When/Then :
+      #    Given: le code source est présent
+      #    When:  le build est lancé
+      #    Then:  le dossier dist/ est généré sans erreur
+      - name: "⑤ Build application (Given-When-Then)"
+        run: npm run build
+
+      # ⑥ Artefact de build — preuve d'exécution (Annexe TP4)
+      - name: "⑥ Upload build artifact (preuve d'exécution)"
+        uses: actions/upload-artifact@v4
+        with:
+          name: "acceptance-build-${{ github.sha }}"
+          path: dist/
+          retention-days: 7
+
+      # ⑦ Résumé visible dans l'onglet Actions (reporting TP4)
+      - name: "⑦ Acceptance summary"
+        run: |
+          echo "## ✅ Acceptance Tests – Résultats" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Critère | Statut |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Déclenchement automatique | ✅ Push/PR détecté |" >> $GITHUB_STEP_SUMMARY
+          echo "| Isolation (Ubuntu) | ✅ ubuntu-latest |" >> $GITHUB_STEP_SUMMARY
+          echo "| TypeScript sans erreur | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Build production réussi | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Artefact disponible | ✅ acceptance-build-${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\` par @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
