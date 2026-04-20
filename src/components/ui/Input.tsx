@@ -12,13 +12,16 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="space-y-1.5">
         {label && (
-          <label className="block text-sm font-medium"
+          <label 
+            htmlFor={props.id || props.name}
+            className="block text-sm font-medium"
             style={{ color: 'var(--text-secondary)' }}>
             {label}
           </label>
         )}
         <input
           ref={ref}
+          id={props.id || props.name}
           className={clsx(
             'w-full rounded-xl px-4 py-3 text-sm',
             'border transition-all duration-150',
