@@ -290,7 +290,7 @@ export function Login() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
               {/* Role */}
               <Select
                 label="Rôle"
@@ -311,9 +311,14 @@ export function Login() {
 
               {/* Password + strength indicator */}
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-slate-300">Mot de passe</label>
+                <label 
+                  htmlFor="password"
+                  className="block text-sm font-medium text-slate-300">
+                  Mot de passe
+                </label>
                 <div className="relative">
                   <input
+                    id="password"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="Minimum 6 caractères"
                     className={[
