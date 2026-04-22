@@ -11,12 +11,7 @@ const firebaseConfig = {
   appId: "1:547495791246:web:91b182330aebde07b157df"
 };
 
-// Initialize Firebase — App Check is NOT initialized here.
-// If App Check was enabled in the Firebase console, go to:
-//   Firebase Console → App Check → your web app → toggle "Enforce" OFF
-//   or add localhost / your Vercel domain to the allowed origins.
 const app = initializeApp(firebaseConfig);
-
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
