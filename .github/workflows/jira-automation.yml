@@ -1,25 +1,22 @@
 # ──────────────────────────────────────────────────────────
-#  Jira SCRUM Auto-Sync
+#  Jira SCRUM Auto-Sync — Direct API (curl)
 #
-#  Branch naming convention: FrontEnd/SCRUM-XX-description
+#  Branch naming: FrontEnd/SCRUM-XX-description
 #
-#  Workflow:
-#    Branch created  → ticket transitions to "In Progress"
-#    PR opened       → ticket transitions to "In Review"
-#    PR merged       → ticket transitions to "Done"
+#  Branch created       → In Progress
+#  PR opened/reopened  → Test
+#  PR merged           → Done
+#  PR closed (no merge) → In Progress
 #
-#  Required GitHub Secrets:
-#    JIRA_BASE_URL   → https://your-domain.atlassian.net
-#    JIRA_USER_EMAIL → your@email.com
-#    JIRA_API_TOKEN  → from id.atlassian.com/manage-profile/security/api-tokens
-#
-#  Transition names must match your board's workflow columns exactly.
-#  Common alternatives: "In Progress" / "En cours" / "Doing"
+#  GitHub Secrets requis :
+#    JIRA_BASE_URL    → https://benji-d-goat1998.atlassian.net
+#    JIRA_USER_EMAIL  → votre@email.com
+#    JIRA_API_TOKEN   → depuis id.atlassian.com
 # ──────────────────────────────────────────────────────────
 name: Jira SCRUM Sync
 
 on:
-  create:          # branch or tag created
+  create:
   pull_request:
     types: [opened, reopened, synchronize, closed]
 
@@ -27,135 +24,193 @@ jobs:
   sync:
     name: Sync SCRUM ticket
     runs-on: ubuntu-latest
-    # Only run on branches (not tag creates), and only when secrets are configured
     if: |
       (github.event_name == 'create' && github.ref_type == 'branch') ||
       github.event_name == 'pull_request'
 
     steps:
-      # ── Extract SCRUM-XX from branch name ─────────────────
-      - name: Extract issue key
+      # ── 1. Extraire SCRUM-XX du nom de branche ────────────
+      - name: Extract SCRUM issue key
         id: key
         run: |
-          # Support both push branch and PR head branch
           BRANCH="${{ github.head_ref || github.ref_name }}"
-          echo "Branch: $BRANCH"
+          echo "🔍 Branch: $BRANCH"
 
-          # Match SCRUM-N or SCRUM-NN patterns
           KEY=$(echo "$BRANCH" | grep -oE 'SCRUM-[0-9]+' | head -1)
 
           if [ -z "$KEY" ]; then
-            echo "⚠️  No SCRUM ticket found in branch: $BRANCH — skipping"
+            echo "⚠️  No SCRUM key in: $BRANCH — skipping"
             echo "found=false" >> $GITHUB_OUTPUT
           else
-            echo "✅ Found ticket: $KEY"
-            echo "issue=$KEY"  >> $GITHUB_OUTPUT
-            echo "found=true"  >> $GITHUB_OUTPUT
+            echo "✅ Found: $KEY"
+            echo "key=$KEY"   >> $GITHUB_OUTPUT
+            echo "found=true" >> $GITHUB_OUTPUT
           fi
 
-      # ── Authenticate with Jira ─────────────────────────────
-      - name: Jira login
-        if: steps.key.outputs.found == 'true'
-        uses: atlassian/gajira-login@v3
-        env:
-          JIRA_BASE_URL:   ${{ secrets.JIRA_BASE_URL }}
-          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
-          JIRA_API_TOKEN:  ${{ secrets.JIRA_API_TOKEN }}
-
-      # ── Branch created → In Progress ──────────────────────
-      - name: "→ In Progress  (branch created)"
-        if: |
-          steps.key.outputs.found == 'true' &&
-          github.event_name == 'create' &&
-          github.ref_type == 'branch'
-        uses: atlassian/gajira-transition@v3
-        with:
-          issue:      ${{ steps.key.outputs.issue }}
-          transition: "In Progress"
-
-      - name: "💬 Comment: branch created"
-        if: |
-          steps.key.outputs.found == 'true' &&
-          github.event_name == 'create' &&
-          github.ref_type == 'branch'
-        uses: atlassian/gajira-comment@v3
-        with:
-          issue:   ${{ steps.key.outputs.issue }}
-          comment: |
-            🚀 **Development started**
-            Branch: `${{ github.ref_name }}`
-            Author: @${{ github.actor }}
-
-      # ── PR opened → In Review ──────────────────────────────
-      - name: "→ In Review  (PR opened)"
-        if: |
-          steps.key.outputs.found == 'true' &&
-          github.event_name == 'pull_request' &&
-          (github.event.action == 'opened' || github.event.action == 'reopened')
-        uses: atlassian/gajira-transition@v3
-        with:
-          issue:      ${{ steps.key.outputs.issue }}
-          transition: "In Review"
-
-      - name: "💬 Comment: PR opened"
-        if: |
-          steps.key.outputs.found == 'true' &&
-          github.event_name == 'pull_request' &&
-          (github.event.action == 'opened' || github.event.action == 'reopened')
-        uses: atlassian/gajira-comment@v3
-        with:
-          issue:   ${{ steps.key.outputs.issue }}
-          comment: |
-            🔍 **Pull Request opened — awaiting review**
-            PR #${{ github.event.pull_request.number }}: [${{ github.event.pull_request.title }}](${{ github.event.pull_request.html_url }})
-            Reviewer(s): ${{ join(github.event.pull_request.requested_reviewers.*.login, ', ') || 'unassigned' }}
-
-      # ── PR merged → Done ──────────────────────────────────
-      - name: "→ Done  (PR merged)"
-        if: |
-          steps.key.outputs.found == 'true' &&
-          github.event_name == 'pull_request' &&
-          github.event.action == 'closed' &&
-          github.event.pull_request.merged == true
-        uses: atlassian/gajira-transition@v3
-        with:
-          issue:      ${{ steps.key.outputs.issue }}
-          transition: "Done"
-
-      - name: "💬 Comment: merged"
-        if: |
-          steps.key.outputs.found == 'true' &&
-          github.event_name == 'pull_request' &&
-          github.event.action == 'closed' &&
-          github.event.pull_request.merged == true
-        uses: atlassian/gajira-comment@v3
-        with:
-          issue:   ${{ steps.key.outputs.issue }}
-          comment: |
-            ✅ **Développement terminé et mergé dans main.**
-            PR #${{ github.event.pull_request.number }} merged by @${{ github.event.pull_request.merged_by.login }}
-            Commit: `${{ github.event.pull_request.merge_commit_sha }}`
-
-      # ── PR closed without merge → Back to In Progress ─────
-      - name: "→ In Progress  (PR closed without merge)"
-        if: |
-          steps.key.outputs.found == 'true' &&
-          github.event_name == 'pull_request' &&
-          github.event.action == 'closed' &&
-          github.event.pull_request.merged == false
-        uses: atlassian/gajira-transition@v3
-        with:
-          issue:      ${{ steps.key.outputs.issue }}
-          transition: "In Progress"
-
-      # ── Summary ───────────────────────────────────────────
-      - name: Summary
+      # ── 2. Déterminer la transition cible ─────────────────
+      - name: Determine target transition
+        id: transition
         if: steps.key.outputs.found == 'true'
         run: |
           EVENT="${{ github.event_name }}"
           ACTION="${{ github.event.action }}"
-          ISSUE="${{ steps.key.outputs.issue }}"
+          MERGED="${{ github.event.pull_request.merged }}"
+
+          if [ "$EVENT" = "create" ]; then
+            echo "name=In Progress" >> $GITHUB_OUTPUT
+            echo "emoji=🚀"        >> $GITHUB_OUTPUT
+          elif [ "$EVENT" = "pull_request" ]; then
+            if [ "$ACTION" = "opened" ] || [ "$ACTION" = "reopened" ]; then
+              echo "name=Test"      >> $GITHUB_OUTPUT
+              echo "emoji=🧪"       >> $GITHUB_OUTPUT
+            elif [ "$ACTION" = "closed" ] && [ "$MERGED" = "true" ]; then
+              echo "name=Done"     >> $GITHUB_OUTPUT
+              echo "emoji=✅"      >> $GITHUB_OUTPUT
+            elif [ "$ACTION" = "closed" ] && [ "$MERGED" = "false" ]; then
+              echo "name=In Progress" >> $GITHUB_OUTPUT
+              echo "emoji=↩️"         >> $GITHUB_OUTPUT
+            else
+              echo "name=skip"    >> $GITHUB_OUTPUT
+              echo "emoji=⏭️"     >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      # ── 3. Récupérer les transitions disponibles ──────────
+      - name: Get available transitions
+        id: transitions
+        if: |
+          steps.key.outputs.found == 'true' &&
+          steps.transition.outputs.name != 'skip'
+        env:
+          BASE_URL:   ${{ secrets.JIRA_BASE_URL }}
+          USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          API_TOKEN:  ${{ secrets.JIRA_API_TOKEN }}
+          ISSUE_KEY:  ${{ steps.key.outputs.key }}
+        run: |
+          echo "📋 Fetching transitions for $ISSUE_KEY..."
+          RESPONSE=$(curl -s \
+            -u "$USER_EMAIL:$API_TOKEN" \
+            -H "Accept: application/json" \
+            "$BASE_URL/rest/api/3/issue/$ISSUE_KEY/transitions")
+
+          echo "Response: $RESPONSE"
+
+          # Lister toutes les transitions disponibles
+          echo "$RESPONSE" | python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)
+          for t in data.get('transitions', []):
+              print(f\"  ID={t['id']}  name={t['name']}\")
+          "
+
+          echo "transitions_json=$RESPONSE" >> $GITHUB_OUTPUT
+
+      # ── 4. Trouver l'ID de la transition et l'appliquer ───
+      - name: Apply Jira transition
+        if: |
+          steps.key.outputs.found == 'true' &&
+          steps.transition.outputs.name != 'skip'
+        env:
+          BASE_URL:        ${{ secrets.JIRA_BASE_URL }}
+          USER_EMAIL:      ${{ secrets.JIRA_USER_EMAIL }}
+          API_TOKEN:       ${{ secrets.JIRA_API_TOKEN }}
+          ISSUE_KEY:       ${{ steps.key.outputs.key }}
+          TARGET_NAME:     ${{ steps.transition.outputs.name }}
+          TRANSITIONS_JSON: ${{ steps.transitions.outputs.transitions_json }}
+          EMOJI:           ${{ steps.transition.outputs.emoji }}
+        run: |
+          echo "$EMOJI Transitioning $ISSUE_KEY → $TARGET_NAME"
+
+          # Trouver l'ID correspondant au nom (insensible à la casse)
+          TRANSITION_ID=$(echo "$TRANSITIONS_JSON" | python3 -c "
+          import json, sys, os
+          target = os.environ['TARGET_NAME'].lower()
+          data = json.load(sys.stdin)
+          for t in data.get('transitions', []):
+              if t['name'].lower() == target:
+                  print(t['id'])
+                  sys.exit(0)
+          print('')
+          ")
+
+          if [ -z "$TRANSITION_ID" ]; then
+            echo "❌ Transition '$TARGET_NAME' not found!"
+            echo "Available transitions:"
+            echo "$TRANSITIONS_JSON" | python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)
+          for t in data.get('transitions', []):
+              print(f\"  → {t['name']} (ID: {t['id']})\")
+          "
+            exit 1
+          fi
+
+          echo "✅ Found transition ID: $TRANSITION_ID"
+
+          # Appliquer la transition
+          HTTP_STATUS=$(curl -s -o /tmp/jira_response.json -w "%{http_code}" \
+            -X POST \
+            -u "$USER_EMAIL:$API_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"transition\":{\"id\":\"$TRANSITION_ID\"}}" \
+            "$BASE_URL/rest/api/3/issue/$ISSUE_KEY/transitions")
+
+          echo "HTTP Status: $HTTP_STATUS"
+          cat /tmp/jira_response.json 2>/dev/null || true
+
+          if [ "$HTTP_STATUS" = "204" ]; then
+            echo "✅ Transition applied successfully!"
+          else
+            echo "❌ Transition failed (HTTP $HTTP_STATUS)"
+            exit 1
+          fi
+
+      # ── 5. Ajouter un commentaire Jira ────────────────────
+      - name: Add Jira comment
+        if: |
+          steps.key.outputs.found == 'true' &&
+          steps.transition.outputs.name != 'skip'
+        env:
+          BASE_URL:    ${{ secrets.JIRA_BASE_URL }}
+          USER_EMAIL:  ${{ secrets.JIRA_USER_EMAIL }}
+          API_TOKEN:   ${{ secrets.JIRA_API_TOKEN }}
+          ISSUE_KEY:   ${{ steps.key.outputs.key }}
+          TARGET_NAME: ${{ steps.transition.outputs.name }}
+          EMOJI:       ${{ steps.transition.outputs.emoji }}
+          BRANCH:      ${{ github.head_ref || github.ref_name }}
+          ACTOR:       ${{ github.actor }}
+          PR_TITLE:    ${{ github.event.pull_request.title }}
+          PR_URL:      ${{ github.event.pull_request.html_url }}
+          PR_NUMBER:   ${{ github.event.pull_request.number }}
+          MERGED_BY:   ${{ github.event.pull_request.merged_by.login }}
+          COMMIT:      ${{ github.event.pull_request.merge_commit_sha }}
+          EVENT:       ${{ github.event_name }}
+        run: |
+          if [ "$EVENT" = "create" ]; then
+            BODY="$EMOJI *Development started*\nBranch: \`$BRANCH\`\nAuthor: @$ACTOR"
+          elif [ "$TARGET_NAME" = "Test" ]; then
+            BODY="🧪 *Pull Request opened — moved to Test*\nPR #$PR_NUMBER: [$PR_TITLE]($PR_URL)\nBy: @$ACTOR"
+          elif [ "$TARGET_NAME" = "Done" ]; then
+            BODY="✅ *Développement terminé et mergé dans main.*\nPR #$PR_NUMBER merged by @$MERGED_BY\nCommit: \`$COMMIT\`"
+          else
+            BODY="↩️ *PR closed without merge — back to In Progress*\nBy: @$ACTOR"
+          fi
+
+          curl -s -o /dev/null -w "%{http_code}" \
+            -X POST \
+            -u "$USER_EMAIL:$API_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"body\":{\"type\":\"doc\",\"version\":1,\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"$BODY\"}]}]}}" \
+            "$BASE_URL/rest/api/3/issue/$ISSUE_KEY/comment" || true
+
+      # ── 6. Résumé ─────────────────────────────────────────
+      - name: Summary
+        if: steps.key.outputs.found == 'true'
+        run: |
           echo "## 🎯 Jira Sync" >> $GITHUB_STEP_SUMMARY
-          echo "**Ticket:** [$ISSUE](${{ secrets.JIRA_BASE_URL }}/browse/$ISSUE)" >> $GITHUB_STEP_SUMMARY
-          echo "**Event:** $EVENT / $ACTION" >> $GITHUB_STEP_SUMMARY
-          echo "**Branch:** ${{ github.head_ref || github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "| | |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Ticket** | [${{ steps.key.outputs.key }}](${{ secrets.JIRA_BASE_URL }}/browse/${{ steps.key.outputs.key }}) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Transition** | ${{ steps.transition.outputs.emoji }} ${{ steps.transition.outputs.name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branch** | \`${{ github.head_ref || github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Event** | ${{ github.event_name }} / ${{ github.event.action }} |" >> $GITHUB_STEP_SUMMARY
