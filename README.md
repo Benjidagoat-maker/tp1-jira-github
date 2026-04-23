@@ -5,110 +5,98 @@
 [![Jira](https://img.shields.io/badge/Jira-SCRUM-blue?logo=jira)](https://benji-d-goat1998.atlassian.net/jira/software/projects/SCRUM)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)](https://www.typescriptlang.org)
-[![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite)](https://vitejs.dev)
+[![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite)](https://vitejs.dev)
+[![Firebase](https://img.shields.io/badge/Firebase-Hosting-FFCA28?logo=firebase)](https://firebase.google.com)
 
 ---
 
-## Stack technique
+## 📖 À propos du projet
+
+Cette plateforme est conçue pour la gestion complète des **Projets de Fin d'Études (PFE)** pour les étudiants en SI2 à la FST de Sidi Bouzid. Elle permet de suivre tout le cycle de vie d'un projet, de la proposition initiale jusqu'à la soutenance finale.
+
+L'application est intégrée avec **Jira** pour la gestion de projet et **GitHub** pour le contrôle de version, assurant une synchronisation parfaite entre les tickets et le code.
+
+---
+
+## 🌐 Application en ligne
+
+Accédez à la plateforme directement depuis votre navigateur :
+👉 **[https://pfe-fstsbz2025-2026.web.app](https://pfe-fstsbz2025-2026.web.app)**
+
+---
+
+## 🛠 Stack Technique
 
 | Couche | Technologie |
 |--------|-------------|
-| Framework | React 18 + TypeScript |
-| Build tool | Vite 5 |
-| Styling | TailwindCSS 3 |
-| Routing | React Router v6 |
-| State | Zustand (persisté) |
-| Forms | React Hook Form + Zod |
-| Icons | Lucide React |
+| **Frontend** | React 18 + TypeScript |
+| **Build Tool** | Vite 8 |
+| **Styling** | TailwindCSS 3 |
+| **Routing** | React Router v6 |
+| **State Management** | Zustand (avec persistance) |
+| **Backend / Auth** | Firebase (Auth & Firestore) |
+| **Déploiement** | Firebase Hosting |
 
 ---
 
-🌐 Application en ligne
-Accédez à la plateforme directement depuis votre navigateur — aucune installation requise :
-👉 https://tp1-jira-github.vercel.app
----
-
-## Structure du projet
+## 📂 Structure du Projet
 
 ```
 src/
 ├── components/
-│   ├── Layout.tsx          # Navbar + sidebar
-│   ├── ProtectedRoute.tsx  # Garde d'authentification
-│   └── ui/                 # Composants réutilisables
+│   ├── Layout.tsx          # Structure globale (Navbar + Sidebar)
+│   ├── ProtectedRoute.tsx  # Gestion des accès authentifiés
+│   └── ui/                 # Composants UI réutilisables
 ├── pages/
-│   ├── Home.tsx            # Landing page (SCRUM-1)
-│   ├── Login.tsx           # Connexion avec sélecteur de rôle (SCRUM-3)
-│   ├── Dashboard.tsx       # Dashboard par rôle
-│   ├── Groupe.tsx          # Équipe & infos projet (SCRUM-2)
-│   ├── Projets.tsx         # Propositions de projets (SCRUM-5→9)
-│   ├── CompteRendus.tsx    # Compte-rendus périodiques (SCRUM-11→12)
-│   └── Soutenance.tsx      # Rapport final & soutenance (SCRUM-13→14)
+│   ├── Home.tsx            # Landing page interactive
+│   ├── Login.tsx           # Connexion multi-rôles
+│   ├── Dashboard.tsx       # Tableau de bord personnalisé par rôle
+│   ├── Groupe.tsx          # Gestion des équipes et infos projet
+│   ├── Projets.tsx         # Catalogue et soumission de projets
+│   ├── CompteRendus.tsx    # Dépôt et suivi des CR périodiques
+│   └── Soutenance.tsx      # Gestion du rapport final et planning
 ├── store/
-│   └── authStore.ts        # Auth Zustand
+│   └── authStore.ts        # État global de l'authentification
 └── types/
-    └── index.ts            # Interfaces TypeScript
+    └── index.ts            # Définitions TypeScript
 ```
 
 ---
 
-## Rôles disponibles
+## 👥 Rôles et Accès
 
-| Rôle | Email exemple | Accès |
-|------|--------------|-------|
-| Étudiant | ahmed.bensalah@fstsbz.u-kairouan.tn | Projet, CR, Soutenance |
-| Tuteur | sami.trabelsi@fstsbz.u-kairouan.tn | Projets assignés |
-| Coordinateur | leila.mansouri@fstsbz.u-kairouan.tn | Pipeline global |
-| Jury | karim.jebali@fstsbz.u-kairouan.tn | Planning soutenances |
+Tous les utilisateurs doivent se connecter avec leur adresse institutionnelle `@fstsbz.u-kairouan.tn`.
 
-> Tous les emails doivent se terminer par `@fstsbz.u-kairouan.tn`
-
----
-
-## Convention de commits (obligatoire pour sync Jira)
-
-```
-SCRUM-XX : description de la modification
-```
-
-Exemples :
-- `SCRUM-1 : setup vite react typescript project`
-- `SCRUM-3 : implement login page with role selector and zod validation`
-- `SCRUM-5 : add project submission form`
+| Rôle | Accès Principaux |
+|------|------------------|
+| **Étudiant** | Gestion de projet, Dépôt de CR, Rapport de soutenance |
+| **Tuteur** | Suivi et validation des projets assignés |
+| **Coordinateur** | Vue globale, validation des propositions, planning |
+| **Jury** | Évaluation et planning des soutenances |
 
 ---
 
-## Stratégie de branches
+## 🚀 Développement et Déploiement
 
-- `main` — branche protégée (PR + 1 approbation requise)
-- `FrontEnd/SCRUM-XX-description` — branches de fonctionnalité
+### Local
+1. `npm install`
+2. `npm run dev`
 
----
-
-## CI/CD — Auto-tagging
-
-À chaque merge sur `main`, le workflow `.github/workflows/tag-version.yml` crée automatiquement un tag sémantique (`v0.0.1`, `v0.0.2`, etc.).
-
----
-
-## Backlog Jira
-
-- **6 Épics** (SCRUM-5 → SCRUM-10)
-- **39 User Stories** (SCRUM-11 → SCRUM-49)
-- Projet : [SCRUM sur Jira](https://benji-d-goat1998.atlassian.net/jira/software/projects/SCRUM)
+### Déploiement Firebase
+Le déploiement est automatisé ou peut être lancé manuellement :
+1. `npm run build`
+2. `firebase deploy --only hosting`
 
 ---
 
-## Étapes manuelles requises
+## 📋 Gestion de Projet (Jira)
 
-### Jira Automation (Project Settings → Automation)
-1. **Trigger:** Branch created → **Action:** Transition issue → `In Progress`
-2. **Trigger:** PR merged → **Action:** Transition → `Done` + commentaire : `"Développement terminé et mergé dans main."`
+Nous utilisons une convention de commits stricte pour lier les modifications aux tickets Jira :
+`SCRUM-XX : description de la modification`
 
-### GitHub Branch Protection (Settings → Branches → main)
-- ✅ Require pull request before merging
-- ✅ Require at least 1 approval
-- ✅ Do not allow bypassing
+- **Backlog** : [Accéder au tableau Jira](https://benji-d-goat1998.atlassian.net/jira/software/projects/SCRUM)
+- **Épics** : 6 Épics définis (SCRUM-5 → SCRUM-10)
+- **User Stories** : 39 User Stories (SCRUM-11 → SCRUM-49)
 
 ---
 
