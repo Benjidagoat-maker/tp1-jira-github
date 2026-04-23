@@ -57,6 +57,19 @@ function BgBlob() {
   );
 }
 
+function generatePassword() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+';
+  let pwd = '';
+  pwd += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)];
+  pwd += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)];
+  pwd += '0123456789'[Math.floor(Math.random() * 10)];
+  pwd += '!@#$%^&*()_+'[Math.floor(Math.random() * 12)];
+  for (let i = 0; i < 12; i++) {
+    pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return pwd.split('').sort(() => 0.5 - Math.random()).join('');
+}
+
 export function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSignUp, setIsSignUp]         = useState(false);
@@ -78,6 +91,7 @@ export function Login() {
     formState: { errors, isSubmitting },
     reset,
     watch,
+    setValue,
   } = useForm<LoginFormData>({ resolver: zodResolver(loginSchema) });
 
   const watchedPassword = watch('password', '');
@@ -311,11 +325,26 @@ export function Login() {
 
               {/* Password + strength indicator */}
               <div className="space-y-1.5">
-                <label 
-                  htmlFor="password"
-                  className="block text-sm font-medium text-slate-300">
-                  Mot de passe
-                </label>
+                <div className="flex justify-between items-center">
+                  <label 
+                    htmlFor="password"
+                    className="block text-sm font-medium text-slate-300">
+                    Mot de passe
+                  </label>
+                  {isSignUp && (
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        const pwd = generatePassword();
+                        setValue('password', pwd, { shouldValidate: true });
+                        setShowPassword(true);
+                      }}
+                      className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                    >
+                      Générer un mot de passe
+                    </button>
+                  )}
+                </div>
                 <div className="relative">
                   <input
                     id="password"
@@ -366,7 +395,9 @@ export function Login() {
                         />
                       ))}
                     </div>
-                    <p className={`text-xs ${strength.color}`}>{strength.label}</p>
+                    <p className={`text-xs ${strength.color}`}>
+                      {strength.label} <span className="text-slate-500">(Ex: 8+ car., majuscules, chiffres, symboles)</span>
+                    </p>
                   </div>
                 )}
 
