@@ -9,6 +9,7 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   login: (email: string, password: string, role: Role) => Promise<void>;
+  loginWithGitHub: (role: Role) => Promise<void>;
   register: (email: string, password: string, name: string, role: Role) => Promise<void>;
   logout: () => Promise<void>;
   clearError: () => void;
@@ -23,6 +24,25 @@ export const useAuthStore = create<AuthState>()(
       isLoading: true,
       error: null,
 
+      loginWithGitHub: async (role: Role) => {
+        set({ isLoading: true, error: null });
+        try {
+          const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'github',
+            options: {
+              redirectTo: `${window.location.origin}/dashboard`,
+              queryParams: { role },
+            },
+          });
+          if (error) throw error;
+          // OAuth flow redirects away; keep loading state until auth listener updates.
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : 'Erreur de connexion GitHub';
+          set({ error: msg, isLoading: false });
+          throw error;
+        }
+      },
+
       initializeAuth: () => {
         // Check current session immediately
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -32,15 +52,47 @@ export const useAuthStore = create<AuthState>()(
               .select('*')
               .eq('id', session.user.id)
               .single()
-              .then(({ data }) => {
+              .then(async ({ data }) => {
                 if (data) {
                   set({
                     user: { id: session.user.id, ...data },
                     isAuthenticated: true,
                     isLoading: false,
                   });
+                  return;
+                }
+
+                // If profile doesn't exist (e.g., first OAuth login), create one.
+                const metadata = session.user.user_metadata ?? {};
+                const email = session.user.email ?? '';
+                const name =
+                  (typeof metadata.full_name === 'string' && metadata.full_name) ||
+                  (typeof metadata.name === 'string' && metadata.name) ||
+                  email.split('@')[0] ||
+                  'Utilisateur';
+                const roleParam = new URLSearchParams(window.location.search).get('role');
+                const role: Role =
+                  roleParam === 'etudiant' ||
+                  roleParam === 'tuteur' ||
+                  roleParam === 'coordinateur' ||
+                  roleParam === 'jury'
+                    ? roleParam
+                    : 'etudiant';
+
+                const { data: createdProfile } = await supabase
+                  .from('profiles')
+                  .upsert({ id: session.user.id, name, email, role })
+                  .select('*')
+                  .single();
+
+                if (createdProfile) {
+                  set({
+                    user: { id: session.user.id, ...createdProfile },
+                    isAuthenticated: true,
+                    isLoading: false,
+                  });
                 } else {
-                  set({ isAuthenticated: false, isLoading: false });
+                  set({ user: null, isAuthenticated: false, isLoading: false });
                 }
               });
           } else {
@@ -63,6 +115,38 @@ export const useAuthStore = create<AuthState>()(
                   isAuthenticated: true,
                   isLoading: false,
                 });
+              } else {
+                const metadata = session.user.user_metadata ?? {};
+                const email = session.user.email ?? '';
+                const name =
+                  (typeof metadata.full_name === 'string' && metadata.full_name) ||
+                  (typeof metadata.name === 'string' && metadata.name) ||
+                  email.split('@')[0] ||
+                  'Utilisateur';
+                const roleParam = new URLSearchParams(window.location.search).get('role');
+                const role: Role =
+                  roleParam === 'etudiant' ||
+                  roleParam === 'tuteur' ||
+                  roleParam === 'coordinateur' ||
+                  roleParam === 'jury'
+                    ? roleParam
+                    : 'etudiant';
+
+                const { data: createdProfile } = await supabase
+                  .from('profiles')
+                  .upsert({ id: session.user.id, name, email, role })
+                  .select('*')
+                  .single();
+
+                if (createdProfile) {
+                  set({
+                    user: { id: session.user.id, ...createdProfile },
+                    isAuthenticated: true,
+                    isLoading: false,
+                  });
+                } else {
+                  set({ user: null, isAuthenticated: false, isLoading: false });
+                }
               }
             } else {
               set({ user: null, isAuthenticated: false, isLoading: false });

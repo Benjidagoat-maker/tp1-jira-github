@@ -34,7 +34,8 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: 'npm run preview -- --port 4173',
+    // Use Vite dev server for consistent SPA routing on /login.
+    command: 'npm run dev -- --host 127.0.0.1 --port 4173',
     url: 'http://localhost:4173',
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,

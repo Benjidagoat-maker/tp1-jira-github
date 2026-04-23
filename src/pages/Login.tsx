@@ -66,7 +66,7 @@ export function Login() {
   const [forgotError,   setForgotError]   = useState<string | null>(null);
 
   const navigate = useNavigate();
-  const { login, register: registerUser, error, clearError } = useAuthStore();
+  const { login, loginWithGitHub, register: registerUser, error, clearError } = useAuthStore();
 
   const {
     register,
@@ -98,6 +98,18 @@ export function Login() {
         setAuthError(err.message);
       }
     }
+  };
+
+  const handleGithubLogin = async () => {
+    const selectedRole = watch('role');
+    const role: Role =
+      selectedRole === 'etudiant' ||
+      selectedRole === 'tuteur' ||
+      selectedRole === 'coordinateur' ||
+      selectedRole === 'jury'
+        ? selectedRole
+        : 'etudiant';
+    await loginWithGitHub(role);
   };
 
   /* ── Forgot password via Supabase ─── */
@@ -308,6 +320,19 @@ export function Login() {
                   : isSignUp ? "S'inscrire" : 'Se connecter'}
               </Button>
             </form>
+
+            {!isSignUp && (
+              <div className="mt-4">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full"
+                  onClick={handleGithubLogin}
+                >
+                  Continuer avec GitHub
+                </Button>
+              </div>
+            )}
 
             <div className="mt-5 flex items-center justify-between">
               <button type="button" onClick={toggleMode}
