@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/authStore';
+import { supabase } from '../lib/supabase';
 import { Card, CardHeader, CardTitle } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import {
@@ -8,15 +9,17 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
-import { collection, query, where, getDocs, getDoc, doc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
 
 interface Team {
   id: string;
   groupe: string;
-  scrumMaster: string;
-  developers: string[];
-  teamName: string;
+  scrum_master: string;
+  dev1: string | null;
+  dev2: string | null;
+  dev3: string | null;
+  dev4: string | null;
+  dev5: string | null;
+  team_name: string | null;
 }
 
 interface Project {
@@ -24,22 +27,23 @@ interface Project {
   title: string;
   description: string;
   status: string;
-  submittedBy: string;
+  submitted_by: string;
   tuteur?: string;
 }
 
 interface CompteRendu {
   id: string;
-  projectId: string;
+  project_id: string;
   status: string;
 }
 
 interface Soutenance {
   id: string;
-  projectId: string;
+  project_id: string;
   date: string;
   time: string;
   room: string;
+  status: string;
 }
 
 // ── Étudiant Dashboard ───────────────────────────────────────────────
@@ -56,41 +60,46 @@ function EtudiantDashboard() {
       if (!user) return;
       setLoading(true);
       try {
-        // Find user's team by checking if their name is in developers or scrumMaster
-        const teamsSnapshot = await getDocs(collection(db, 'teams'));
-        let userTeam: Team | null = null;
-        
-        teamsSnapshot.forEach((docSnap) => {
-          const data = docSnap.data();
+        // Find user's team
+        const { data: teams } = await supabase.from('teams').select('*');
+        if (teams) {
           const userName = user.name.toLowerCase();
-          const scrumMaster = (data.scrumMaster || '').toLowerCase();
-          const developers = (data.developers || []).map((d: string) => d.toLowerCase());
-          
-          if (scrumMaster.includes(userName) || userName.includes(scrumMaster.split(' ')[0]) ||
-              developers.some((d: string) => d.includes(userName) || userName.includes(d.split(' ')[0]))) {
-            userTeam = { id: docSnap.id, ...data } as Team;
-          }
-        });
-        setTeam(userTeam);
+          const found = teams.find((t: Team) => {
+            const members = [t.scrum_master, t.dev1, t.dev2, t.dev3, t.dev4, t.dev5]
+              .filter(Boolean)
+              .map((m) => (m as string).toLowerCase());
+            return members.some(
+              (m) => m.includes(userName.split(' ')[0]) || userName.includes(m.split(' ')[0])
+            );
+          });
+          setTeam(found ?? null);
+        }
 
         // Fetch user's project
-        const projectsQuery = query(collection(db, 'projects'), where('submittedBy', '==', user.id));
-        const projectsSnapshot = await getDocs(projectsQuery);
-        if (!projectsSnapshot.empty) {
-          const projectDoc = projectsSnapshot.docs[0];
-          setProject({ id: projectDoc.id, ...projectDoc.data() } as Project);
+        const { data: projects } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('submitted_by', user.name)
+          .limit(1);
 
-          // Fetch compte-rendus for this project
-          const crQuery = query(collection(db, 'compteRendus'), where('projectId', '==', projectDoc.id));
-          const crSnapshot = await getDocs(crQuery);
-          setCompteRendus(crSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as CompteRendu)));
+        if (projects && projects.length > 0) {
+          const p = projects[0];
+          setProject(p);
+
+          // Fetch compte-rendus
+          const { data: crs } = await supabase
+            .from('compte_rendus')
+            .select('*')
+            .eq('project_id', p.id);
+          setCompteRendus(crs ?? []);
 
           // Fetch soutenance
-          const soutQuery = query(collection(db, 'soutenances'), where('projectId', '==', projectDoc.id));
-          const soutSnapshot = await getDocs(soutQuery);
-          if (!soutSnapshot.empty) {
-            setSoutenance({ id: soutSnapshot.docs[0].id, ...soutSnapshot.docs[0].data() } as Soutenance);
-          }
+          const { data: souts } = await supabase
+            .from('soutenances')
+            .select('*')
+            .eq('project_id', p.id)
+            .limit(1);
+          setSoutenance(souts?.[0] ?? null);
         }
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -109,30 +118,30 @@ function EtudiantDashboard() {
     );
   }
 
-  const submittedCR = compteRendus.filter(cr => cr.status === 'valide').length;
-  const totalCR = 4; // Expected compte-rendus
+  const submittedCR = compteRendus.filter((cr) => cr.status === 'valide').length;
+  const totalCR = 4;
 
   const items = [
-    { 
-      label: 'Mon projet', 
-      value: project?.title || 'Aucun projet', 
-      sub: project?.status || 'Non soumis', 
-      icon: FolderOpen, 
-      badge: project ? 'success' as const : 'muted' as const 
+    {
+      label: 'Mon projet',
+      value: project?.title || 'Aucun projet',
+      sub: project?.status || 'Non soumis',
+      icon: FolderOpen,
+      badge: project ? ('success' as const) : ('muted' as const),
     },
-    { 
-      label: 'Compte-rendus', 
-      value: `${submittedCR} / ${totalCR}`, 
-      sub: 'Soumis', 
-      icon: FileText, 
-      badge: submittedCR > 0 ? 'warning' as const : 'muted' as const 
+    {
+      label: 'Compte-rendus',
+      value: `${submittedCR} / ${totalCR}`,
+      sub: 'Soumis',
+      icon: FileText,
+      badge: submittedCR > 0 ? ('warning' as const) : ('muted' as const),
     },
-    { 
-      label: 'Soutenance', 
-      value: soutenance ? soutenance.date : 'Non planifiée', 
-      sub: soutenance ? `Salle ${soutenance.room}, ${soutenance.time}` : '-', 
-      icon: Award, 
-      badge: soutenance ? 'info' as const : 'muted' as const 
+    {
+      label: 'Soutenance',
+      value: soutenance ? soutenance.date : 'Non planifiée',
+      sub: soutenance ? `Salle ${soutenance.room}, ${soutenance.time}` : '-',
+      icon: Award,
+      badge: soutenance ? ('info' as const) : ('muted' as const),
     },
   ];
 
@@ -147,7 +156,6 @@ function EtudiantDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Team Info */}
       {team && (
         <Card>
           <div className="flex items-center gap-3 mb-2">
@@ -155,10 +163,10 @@ function EtudiantDashboard() {
             <p className="text-sm text-slate-400">Mon équipe</p>
           </div>
           <p className="font-display font-semibold text-slate-100 text-lg">
-            {team.teamName || team.groupe}
+            {team.team_name || team.groupe}
           </p>
           <p className="text-xs text-slate-500 mt-1">
-            Scrum Master: {team.scrumMaster} · {team.developers.length} membres
+            Scrum Master: {team.scrum_master} · Groupe {team.groupe}
           </p>
         </Card>
       )}
@@ -184,15 +192,21 @@ function EtudiantDashboard() {
               {step.done
                 ? <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />
                 : <Clock className="w-4 h-4 text-slate-600 shrink-0" />}
-              <span className={`text-sm ${step.done ? 'text-slate-300' : 'text-slate-500'}`}>{step.label}</span>
+              <span className={`text-sm ${step.done ? 'text-slate-300' : 'text-slate-500'}`}>
+                {step.label}
+              </span>
             </div>
           ))}
         </div>
       </Card>
 
       <div className="flex gap-3">
-        <Link to="/projets"><Button variant="ghost" size="sm">Voir mes projets <ArrowRight className="w-3.5 h-3.5" /></Button></Link>
-        <Link to="/compte-rendus"><Button variant="ghost" size="sm">Compte-rendus <ArrowRight className="w-3.5 h-3.5" /></Button></Link>
+        <Link to="/projets">
+          <Button variant="ghost" size="sm">Voir mes projets <ArrowRight className="w-3.5 h-3.5" /></Button>
+        </Link>
+        <Link to="/compte-rendus">
+          <Button variant="ghost" size="sm">Compte-rendus <ArrowRight className="w-3.5 h-3.5" /></Button>
+        </Link>
       </div>
     </div>
   );
@@ -208,28 +222,23 @@ function TuteurDashboard() {
     async function fetchData() {
       if (!user) return;
       setLoading(true);
-      try {
-        const projectsQuery = query(collection(db, 'projects'), where('tuteur', '==', user.id));
-        const projectsSnapshot = await getDocs(projectsQuery);
-        setProjects(projectsSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Project)));
-      } catch (error) {
-        console.error('Error fetching tuteur data:', error);
-      } finally {
-        setLoading(false);
-      }
+      const { data } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('tuteur', user.name);
+      setProjects(data ?? []);
+      setLoading(false);
     }
     fetchData();
   }, [user]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="flex items-center justify-center py-12">
+      <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+    </div>
+  );
 
-  const pendingCount = projects.filter(p => p.status === 'en_attente').length;
+  const pendingCount = projects.filter((p) => p.status === 'en_attente').length;
 
   return (
     <div className="space-y-6">
@@ -257,12 +266,19 @@ function TuteurDashboard() {
             <p className="text-sm text-slate-500">Aucun projet assigné</p>
           ) : (
             projects.map((p) => (
-              <div key={p.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-900/40 border border-slate-700/30">
+              <div
+                key={p.id}
+                className="flex items-center justify-between p-3 rounded-lg bg-slate-900/40 border border-slate-700/30"
+              >
                 <div>
                   <p className="text-sm font-medium text-slate-100">{p.title}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">{p.submittedBy}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{p.submitted_by}</p>
                 </div>
-                <Badge variant={p.status === 'en_cours' ? 'default' : p.status === 'valide' ? 'success' : 'warning'}>
+                <Badge
+                  variant={
+                    p.status === 'en_cours' ? 'default' : p.status === 'valide' ? 'success' : 'warning'
+                  }
+                >
                   {p.status}
                 </Badge>
               </div>
@@ -277,73 +293,71 @@ function TuteurDashboard() {
 // ── Coordinateur Dashboard ───────────────────────────────────────────
 function CoordinateurDashboard() {
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({ students: 0, tuteurs: 0, projects: { proposed: 0, validated: 0, inProgress: 0, completed: 0 } });
+  const [stats, setStats] = useState({
+    students: 0,
+    tuteurs: 0,
+    projects: { proposed: 0, validated: 0, inProgress: 0, completed: 0 },
+  });
   const [projectsByStatus, setProjectsByStatus] = useState<Record<string, Project[]>>({});
 
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
-      try {
-        // Fetch all users
-        const usersSnapshot = await getDocs(collection(db, 'users'));
-        let students = 0, tuteurs = 0;
-        usersSnapshot.forEach(d => {
-          const role = d.data().role;
-          if (role === 'etudiant') students++;
-          if (role === 'tuteur') tuteurs++;
-        });
+      // Fetch profiles
+      const { data: profiles } = await supabase.from('profiles').select('role');
+      let students = 0, tuteurs = 0;
+      (profiles ?? []).forEach((p: { role: string }) => {
+        if (p.role === 'etudiant') students++;
+        if (p.role === 'tuteur') tuteurs++;
+      });
 
-        // Fetch all projects
-        const projectsSnapshot = await getDocs(collection(db, 'projects'));
-        const projects: Project[] = projectsSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Project));
-        
-        const byStatus: Record<string, Project[]> = {
-          'en_attente': [],
-          'valide': [],
-          'en_cours': [],
-          'soutenu': [],
-        };
-        projects.forEach(p => {
-          if (byStatus[p.status]) byStatus[p.status].push(p);
-        });
+      // Fetch projects
+      const { data: projects } = await supabase.from('projects').select('*');
+      const byStatus: Record<string, Project[]> = {
+        en_attente: [], valide: [], en_cours: [], soutenu: [],
+      };
+      (projects ?? []).forEach((p: Project) => {
+        if (byStatus[p.status]) byStatus[p.status].push(p);
+      });
 
-        setStats({
-          students,
-          tuteurs,
-          projects: {
-            proposed: byStatus['en_attente'].length,
-            validated: byStatus['valide'].length,
-            inProgress: byStatus['en_cours'].length,
-            completed: byStatus['soutenu'].length,
-          }
-        });
-        setProjectsByStatus(byStatus);
-      } catch (error) {
-        console.error('Error fetching coordinator data:', error);
-      } finally {
-        setLoading(false);
-      }
+      setStats({
+        students,
+        tuteurs,
+        projects: {
+          proposed: byStatus['en_attente'].length,
+          validated: byStatus['valide'].length,
+          inProgress: byStatus['en_cours'].length,
+          completed: byStatus['soutenu'].length,
+        },
+      });
+      setProjectsByStatus(byStatus);
+      setLoading(false);
     }
     fetchData();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="flex items-center justify-center py-12">
+      <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+    </div>
+  );
 
   const pipeline = [
-    { stage: 'Proposé', count: stats.projects.proposed, color: 'text-slate-400', bg: 'bg-slate-700/50', projects: projectsByStatus['en_attente'] || [] },
-    { stage: 'Validé', count: stats.projects.validated, color: 'text-blue-400', bg: 'bg-blue-600/10', projects: projectsByStatus['valide'] || [] },
-    { stage: 'En cours', count: stats.projects.inProgress, color: 'text-amber-400', bg: 'bg-amber-500/10', projects: projectsByStatus['en_cours'] || [] },
-    { stage: 'Soutenu', count: stats.projects.completed, color: 'text-green-400', bg: 'bg-green-500/10', projects: projectsByStatus['soutenu'] || [] },
+    { stage: 'Proposé',   count: stats.projects.proposed,   color: 'text-slate-400',  bg: 'bg-slate-700/50',   projects: projectsByStatus['en_attente'] ?? [] },
+    { stage: 'Validé',    count: stats.projects.validated,  color: 'text-blue-400',   bg: 'bg-blue-600/10',    projects: projectsByStatus['valide'] ?? [] },
+    { stage: 'En cours',  count: stats.projects.inProgress, color: 'text-amber-400',  bg: 'bg-amber-500/10',   projects: projectsByStatus['en_cours'] ?? [] },
+    { stage: 'Soutenu',   count: stats.projects.completed,  color: 'text-green-400',  bg: 'bg-green-500/10',   projects: projectsByStatus['soutenu'] ?? [] },
   ];
 
   const totalProjects = pipeline.reduce((sum, s) => sum + s.count, 0);
-  const validationRate = totalProjects > 0 ? Math.round(((stats.projects.validated + stats.projects.inProgress + stats.projects.completed) / totalProjects) * 100) : 0;
+  const validationRate =
+    totalProjects > 0
+      ? Math.round(
+          ((stats.projects.validated + stats.projects.inProgress + stats.projects.completed) /
+            totalProjects) *
+            100
+        )
+      : 0;
 
   return (
     <div className="space-y-6">
@@ -361,7 +375,9 @@ function CoordinateurDashboard() {
         <div className="grid grid-cols-4 gap-3">
           {pipeline.map((s) => (
             <div key={s.stage} className={`rounded-lg p-3 ${s.bg} border border-white/5`}>
-              <p className={`text-xs font-semibold mb-2 ${s.color} font-mono uppercase tracking-wide`}>{s.stage}</p>
+              <p className={`text-xs font-semibold mb-2 ${s.color} font-mono uppercase tracking-wide`}>
+                {s.stage}
+              </p>
               <div className="space-y-1.5">
                 {s.projects.length === 0 ? (
                   <div className="text-xs text-slate-500">Aucun projet</div>
@@ -380,15 +396,24 @@ function CoordinateurDashboard() {
 
       <div className="grid sm:grid-cols-3 gap-4">
         <Card>
-          <div className="flex items-center gap-3 mb-2"><Users className="w-4 h-4 text-slate-400" /><p className="text-xs text-slate-400">Étudiants actifs</p></div>
+          <div className="flex items-center gap-3 mb-2">
+            <Users className="w-4 h-4 text-slate-400" />
+            <p className="text-xs text-slate-400">Étudiants actifs</p>
+          </div>
           <p className="text-2xl font-display font-bold text-slate-100">{stats.students}</p>
         </Card>
         <Card>
-          <div className="flex items-center gap-3 mb-2"><BookOpen className="w-4 h-4 text-slate-400" /><p className="text-xs text-slate-400">Tuteurs</p></div>
+          <div className="flex items-center gap-3 mb-2">
+            <BookOpen className="w-4 h-4 text-slate-400" />
+            <p className="text-xs text-slate-400">Tuteurs</p>
+          </div>
           <p className="text-2xl font-display font-bold text-slate-100">{stats.tuteurs}</p>
         </Card>
         <Card>
-          <div className="flex items-center gap-3 mb-2"><BarChart3 className="w-4 h-4 text-slate-400" /><p className="text-xs text-slate-400">Taux validation</p></div>
+          <div className="flex items-center gap-3 mb-2">
+            <BarChart3 className="w-4 h-4 text-slate-400" />
+            <p className="text-xs text-slate-400">Taux validation</p>
+          </div>
           <p className="text-2xl font-display font-bold text-slate-100">{validationRate}%</p>
         </Card>
       </div>
@@ -398,64 +423,60 @@ function CoordinateurDashboard() {
 
 // ── Jury Dashboard ───────────────────────────────────────────────────
 function JuryDashboard() {
-  const user = useAuthStore((s) => s.user);
   const [loading, setLoading] = useState(true);
-  const [soutenances, setSoutenances] = useState<Array<Soutenance & { projectTitle: string; studentName: string; evaluated: boolean }>>([]);
+  const [soutenances, setSoutenances] = useState<
+    Array<{ id: string; project_title: string; student_name: string; date: string; time: string; room: string; evaluated: boolean }>
+  >([]);
 
   useEffect(() => {
     async function fetchData() {
-      if (!user) return;
       setLoading(true);
-      try {
-        const soutSnapshot = await getDocs(collection(db, 'soutenances'));
-        const souts: Array<Soutenance & { projectTitle: string; studentName: string; evaluated: boolean }> = [];
-        
-        for (const docSnap of soutSnapshot.docs) {
-          const data = docSnap.data();
-          // Check if this jury member is assigned to this soutenance
-          if (data.jury && data.jury.includes(user.id)) {
-            const projectDoc = await getDoc(doc(db, 'projects', data.projectId));
-            const projectData = projectDoc.data();
-            souts.push({
-              id: docSnap.id,
-              ...data,
-              projectTitle: projectData?.title || 'Unknown',
-              studentName: projectData?.submittedBy || 'Unknown',
-              evaluated: data.status === 'termine',
-            } as Soutenance & { projectTitle: string; studentName: string; evaluated: boolean });
-          }
-        }
-        setSoutenances(souts);
-      } catch (error) {
-        console.error('Error fetching jury data:', error);
-      } finally {
-        setLoading(false);
-      }
+      const { data } = await supabase
+        .from('soutenances')
+        .select('*, projects(title, submitted_by)');
+
+      setSoutenances(
+        (data ?? []).map((s: any) => ({
+          id: s.id,
+          project_title: s.projects?.title ?? 'Unknown',
+          student_name: s.projects?.submitted_by ?? 'Unknown',
+          date: s.date,
+          time: s.time,
+          room: s.room,
+          evaluated: s.status === 'termine',
+        }))
+      );
+      setLoading(false);
     }
     fetchData();
-  }, [user]);
+  }, []);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
-      </div>
-    );
-  }
-
-  const upcoming = soutenances.filter(s => !s.evaluated).length;
-  const evaluated = soutenances.filter(s => s.evaluated).length;
+  if (loading) return (
+    <div className="flex items-center justify-center py-12">
+      <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+    </div>
+  );
 
   return (
     <div className="space-y-6">
       <div className="grid sm:grid-cols-2 gap-4">
         <Card>
-          <div className="flex items-center gap-3 mb-2"><Calendar className="w-5 h-5 text-blue-400" /><p className="text-sm text-slate-400">Soutenances à venir</p></div>
-          <p className="text-3xl font-display font-bold text-slate-100">{upcoming}</p>
+          <div className="flex items-center gap-3 mb-2">
+            <Calendar className="w-5 h-5 text-blue-400" />
+            <p className="text-sm text-slate-400">Soutenances à venir</p>
+          </div>
+          <p className="text-3xl font-display font-bold text-slate-100">
+            {soutenances.filter((s) => !s.evaluated).length}
+          </p>
         </Card>
         <Card>
-          <div className="flex items-center gap-3 mb-2"><TrendingUp className="w-5 h-5 text-green-400" /><p className="text-sm text-slate-400">Projets évalués</p></div>
-          <p className="text-3xl font-display font-bold text-slate-100">{evaluated}</p>
+          <div className="flex items-center gap-3 mb-2">
+            <TrendingUp className="w-5 h-5 text-green-400" />
+            <p className="text-sm text-slate-400">Projets évalués</p>
+          </div>
+          <p className="text-3xl font-display font-bold text-slate-100">
+            {soutenances.filter((s) => s.evaluated).length}
+          </p>
         </Card>
       </div>
 
@@ -466,10 +487,15 @@ function JuryDashboard() {
             <p className="text-sm text-slate-500">Aucune soutenance assignée</p>
           ) : (
             soutenances.map((s) => (
-              <div key={s.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-900/40 border border-slate-700/30">
+              <div
+                key={s.id}
+                className="flex items-center justify-between p-3 rounded-lg bg-slate-900/40 border border-slate-700/30"
+              >
                 <div>
-                  <p className="text-sm font-medium text-slate-100">{s.projectTitle}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">{s.studentName} · {s.date} à {s.time} · Salle {s.room}</p>
+                  <p className="text-sm font-medium text-slate-100">{s.project_title}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {s.student_name} · {s.date} à {s.time} · Salle {s.room}
+                  </p>
                 </div>
                 <Badge variant={s.evaluated ? 'success' : 'warning'}>
                   {s.evaluated ? 'Évalué' : 'À évaluer'}
@@ -481,7 +507,9 @@ function JuryDashboard() {
       </Card>
 
       <Link to="/soutenance">
-        <Button variant="ghost" size="sm">Voir toutes les soutenances <ArrowRight className="w-3.5 h-3.5" /></Button>
+        <Button variant="ghost" size="sm">
+          Voir toutes les soutenances <ArrowRight className="w-3.5 h-3.5" />
+        </Button>
       </Link>
     </div>
   );
@@ -509,10 +537,10 @@ export function Dashboard() {
         </p>
       </div>
 
-      {user?.role === 'etudiant' && <EtudiantDashboard />}
-      {user?.role === 'tuteur' && <TuteurDashboard />}
+      {user?.role === 'etudiant'     && <EtudiantDashboard />}
+      {user?.role === 'tuteur'       && <TuteurDashboard />}
       {user?.role === 'coordinateur' && <CoordinateurDashboard />}
-      {user?.role === 'jury' && <JuryDashboard />}
+      {user?.role === 'jury'         && <JuryDashboard />}
     </div>
   );
 }

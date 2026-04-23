@@ -16,7 +16,7 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true  # cancel older runs on same branch
+  cancel-in-progress: true
 
 jobs:
   type-check-and-build:
@@ -40,13 +40,15 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          VITE_SUPABASE_URL:      "https://glqkyojqftnqwnsmicwi.supabase.co"
+          VITE_SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdscWt5b2pxZnRucXduc21pY3dpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NjA5NzIsImV4cCI6MjA5MjUzNjk3Mn0.eh5Yn8wkL_IALx7MUw7yhO5gjqkTqbNb_VzjkhL_DD8"
 
       - name: Check bundle size
         run: |
           DIST_SIZE=$(du -sh dist/ | cut -f1)
           echo "## 📦 Bundle size: $DIST_SIZE" >> $GITHUB_STEP_SUMMARY
 
-  # ── Preview deploy info ──────────────────────────────────
   deploy-preview:
     name: Deploy Preview (info)
     runs-on: ubuntu-latest

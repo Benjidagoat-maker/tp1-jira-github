@@ -4,9 +4,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Eye, EyeOff, ArrowLeft, Zap, AlertCircle, Mail, CheckCircle2 } from 'lucide-react';
-import { sendPasswordResetEmail } from 'firebase/auth';
+import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/authStore';
-import { auth } from '../lib/firebase';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
@@ -30,7 +29,6 @@ function getPasswordStrength(pwd: string): {
   return { score: 3, label: 'Mot de passe fort !', color: 'text-green-400' };
 }
 
-/* ── Zod schema — no domain restriction ─────────────────── */
 const loginSchema = z.object({
   email: z.string().min(1, 'Email requis').email('Adresse email invalide'),
   password: z.string().min(6, 'Le mot de passe doit contenir au moins 6 caractères'),
@@ -48,7 +46,6 @@ const roleOptions = [
   { value: 'jury',         label: 'Membre du Jury' },
 ];
 
-/* ── Shared background decoration ───────────────────────── */
 function BgBlob() {
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden">
@@ -62,7 +59,6 @@ export function Login() {
   const [isSignUp, setIsSignUp]         = useState(false);
   const [authError, setAuthError]       = useState<string | null>(null);
 
-  /* Forgot-password state */
   const [forgotMode,    setForgotMode]    = useState(false);
   const [forgotEmail,   setForgotEmail]   = useState('');
   const [forgotSent,    setForgotSent]    = useState(false);
@@ -83,7 +79,6 @@ export function Login() {
   const watchedPassword = watch('password', '');
   const strength        = getPasswordStrength(watchedPassword);
 
-  /* ── Auth submit ─────────────────────────────────────── */
   const onSubmit = async (data: LoginFormData) => {
     setAuthError(null);
     clearError();
@@ -100,39 +95,26 @@ export function Login() {
       navigate('/dashboard');
     } catch (err) {
       if (err instanceof Error) {
-        let msg = err.message;
-        if (msg.includes('auth/invalid-credential') || msg.includes('auth/wrong-password'))
-          msg = 'Email ou mot de passe incorrect';
-        else if (msg.includes('auth/user-not-found'))
-          msg = 'Aucun compte trouvé avec cet email';
-        else if (msg.includes('auth/too-many-requests'))
-          msg = 'Trop de tentatives. Veuillez réessayer plus tard';
-        else if (msg.includes('auth/network-request-failed'))
-          msg = 'Erreur de connexion réseau';
-        else if (msg.includes('auth/email-already-in-use'))
-          msg = 'Cette adresse email est déjà utilisée';
-        setAuthError(msg);
+        setAuthError(err.message);
       }
     }
   };
 
-  /* ── Forgot password ─────────────────────────────────── */
+  /* ── Forgot password via Supabase ─── */
   const handleForgotPassword = async () => {
     if (!forgotEmail) { setForgotError('Veuillez entrer votre adresse email.'); return; }
     setForgotLoading(true);
     setForgotError(null);
     try {
-      await sendPasswordResetEmail(auth, forgotEmail);
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
       setForgotSent(true);
     } catch (err) {
-      if (err instanceof Error) {
-        if (err.message.includes('auth/user-not-found'))
-          setForgotError('Aucun compte trouvé avec cet email.');
-        else if (err.message.includes('auth/invalid-email'))
-          setForgotError('Adresse email invalide.');
-        else
-          setForgotError('Une erreur est survenue. Veuillez réessayer.');
-      }
+      setForgotError(
+        err instanceof Error ? err.message : 'Une erreur est survenue. Veuillez réessayer.'
+      );
     } finally {
       setForgotLoading(false);
     }
@@ -145,21 +127,14 @@ export function Login() {
     reset();
   };
 
-  /* ══════════════════════════════════════════════════════
-     FORGOT-PASSWORD VIEW
-  ══════════════════════════════════════════════════════ */
+  /* ── Forgot-password view ── */
   if (forgotMode) {
     return (
       <div className="min-h-screen bg-slate-900 flex flex-col">
         <BgBlob />
         <header className="px-6 py-4 border-b border-slate-800/80 flex items-center">
           <button
-            onClick={() => {
-              setForgotMode(false);
-              setForgotSent(false);
-              setForgotEmail('');
-              setForgotError(null);
-            }}
+            onClick={() => { setForgotMode(false); setForgotSent(false); setForgotEmail(''); setForgotError(null); }}
             className="flex items-center gap-2 text-slate-400 hover:text-slate-100 transition-colors text-sm"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -181,7 +156,6 @@ export function Login() {
 
             <div className="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-8 backdrop-blur-sm shadow-2xl">
               {forgotSent ? (
-                /* ── Success state ── */
                 <div className="text-center space-y-4">
                   <CheckCircle2 className="w-12 h-12 text-green-400 mx-auto" />
                   <div>
@@ -189,32 +163,24 @@ export function Login() {
                     <p className="text-sm text-slate-400 mt-2">
                       Un lien de réinitialisation a été envoyé à{' '}
                       <strong className="text-slate-200">{forgotEmail}</strong>.
-                      <br />
-                      Vérifiez votre boîte mail (et vos spams).
                     </p>
                   </div>
-                  <Button
-                    variant="ghost"
-                    className="w-full"
-                    onClick={() => { setForgotMode(false); setForgotSent(false); setForgotEmail(''); }}
-                  >
+                  <Button variant="ghost" className="w-full"
+                    onClick={() => { setForgotMode(false); setForgotSent(false); setForgotEmail(''); }}>
                     Retour à la connexion
                   </Button>
                 </div>
               ) : (
-                /* ── Email entry ── */
                 <div className="space-y-5">
                   <p className="text-sm text-slate-400">
-                    Entrez votre adresse email. Vous recevrez un lien pour créer un nouveau mot de passe.
+                    Entrez votre adresse email pour recevoir un lien de réinitialisation.
                   </p>
-
                   {forgotError && (
                     <div className="flex items-start gap-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
                       <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
                       <p className="text-sm text-red-400">{forgotError}</p>
                     </div>
                   )}
-
                   <div className="space-y-1.5">
                     <label className="block text-sm font-medium text-slate-300">Adresse email</label>
                     <input
@@ -228,14 +194,8 @@ export function Login() {
                       onKeyDown={(e) => e.key === 'Enter' && handleForgotPassword()}
                     />
                   </div>
-
-                  <Button
-                    variant="primary"
-                    className="w-full"
-                    onClick={handleForgotPassword}
-                    loading={forgotLoading}
-                    disabled={!forgotEmail}
-                  >
+                  <Button variant="primary" className="w-full" onClick={handleForgotPassword}
+                    loading={forgotLoading} disabled={!forgotEmail}>
                     <Mail className="w-4 h-4" />
                     Envoyer le lien de réinitialisation
                   </Button>
@@ -248,18 +208,13 @@ export function Login() {
     );
   }
 
-  /* ══════════════════════════════════════════════════════
-     MAIN LOGIN / SIGNUP VIEW
-  ══════════════════════════════════════════════════════ */
+  /* ── Main Login / Signup view ── */
   return (
     <div className="min-h-screen bg-slate-900 flex flex-col">
       <BgBlob />
 
       <header className="px-6 py-4 border-b border-slate-800/80 flex items-center gap-3">
-        <Link
-          to="/"
-          className="flex items-center gap-2 text-slate-400 hover:text-slate-100 transition-colors text-sm"
-        >
+        <Link to="/" className="flex items-center gap-2 text-slate-400 hover:text-slate-100 transition-colors text-sm">
           <ArrowLeft className="w-4 h-4" />
           Accueil
         </Link>
@@ -267,7 +222,6 @@ export function Login() {
 
       <div className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md space-y-8">
-          {/* Logo + title */}
           <div className="text-center space-y-3">
             <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-600 rounded-2xl shadow-2xl shadow-blue-600/30">
               <Zap className="w-7 h-7 text-white" />
@@ -280,9 +234,7 @@ export function Login() {
             </div>
           </div>
 
-          {/* Card */}
           <div className="bg-slate-800/60 border border-slate-700/50 rounded-2xl p-8 backdrop-blur-sm shadow-2xl">
-            {/* Auth error */}
             {(authError || error) && (
               <div className="mb-5 flex items-start gap-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
                 <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
@@ -291,29 +243,14 @@ export function Login() {
             )}
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
-              {/* Role */}
-              <Select
-                label="Rôle"
-                options={roleOptions}
-                placeholder="Sélectionnez votre rôle"
-                error={errors.role?.message}
-                {...register('role')}
-              />
+              <Select label="Rôle" options={roleOptions} placeholder="Sélectionnez votre rôle"
+                error={errors.role?.message} {...register('role')} />
 
-              {/* Email — any address accepted */}
-              <Input
-                label="Adresse email"
-                type="email"
-                placeholder="votre@email.com"
-                error={errors.email?.message}
-                {...register('email')}
-              />
+              <Input label="Adresse email" type="email" placeholder="votre@email.com"
+                error={errors.email?.message} {...register('email')} />
 
-              {/* Password + strength indicator */}
               <div className="space-y-1.5">
-                <label 
-                  htmlFor="password"
-                  className="block text-sm font-medium text-slate-300">
+                <label htmlFor="password" className="block text-sm font-medium text-slate-300">
                   Mot de passe
                 </label>
                 <div className="relative">
@@ -346,33 +283,23 @@ export function Login() {
                   </button>
                 </div>
 
-                {/* Strength bar — sign-up only */}
                 {isSignUp && watchedPassword.length > 0 && (
                   <div className="mt-2 space-y-1.5">
                     <div className="flex gap-1.5">
                       {[1, 2, 3].map((i) => (
-                        <div
-                          key={i}
-                          className={[
-                            'h-1 flex-1 rounded-full transition-all duration-300',
-                            strength.score >= i
-                              ? strength.score === 1
-                                ? 'bg-red-500'
-                                : strength.score === 2
-                                ? 'bg-amber-400'
-                                : 'bg-green-400'
-                              : 'bg-slate-700',
-                          ].join(' ')}
-                        />
+                        <div key={i} className={[
+                          'h-1 flex-1 rounded-full transition-all duration-300',
+                          strength.score >= i
+                            ? strength.score === 1 ? 'bg-red-500'
+                              : strength.score === 2 ? 'bg-amber-400' : 'bg-green-400'
+                            : 'bg-slate-700',
+                        ].join(' ')} />
                       ))}
                     </div>
                     <p className={`text-xs ${strength.color}`}>{strength.label}</p>
                   </div>
                 )}
-
-                {errors.password && (
-                  <p className="text-xs text-red-400 mt-1">{errors.password.message}</p>
-                )}
+                {errors.password && <p className="text-xs text-red-400 mt-1">{errors.password.message}</p>}
               </div>
 
               <Button type="submit" className="w-full" size="lg" loading={isSubmitting}>
@@ -382,21 +309,14 @@ export function Login() {
               </Button>
             </form>
 
-            {/* Toggle + forgot password */}
             <div className="mt-5 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={toggleMode}
-                className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
-              >
+              <button type="button" onClick={toggleMode}
+                className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
                 {isSignUp ? 'Déjà un compte ? Se connecter' : "Pas de compte ? S'inscrire"}
               </button>
               {!isSignUp && (
-                <button
-                  type="button"
-                  onClick={() => setForgotMode(true)}
-                  className="text-sm text-slate-400 hover:text-slate-200 transition-colors"
-                >
+                <button type="button" onClick={() => setForgotMode(true)}
+                  className="text-sm text-slate-400 hover:text-slate-200 transition-colors">
                   Mot de passe oublié ?
                 </button>
               )}

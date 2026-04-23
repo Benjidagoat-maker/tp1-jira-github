@@ -1,29 +1,7 @@
 # ──────────────────────────────────────────────────────────────────────────
 #  TP4 – Automatisation : Tests d'acceptation (Page de Connexion)
 #
-#  Intégration du projet de référence : pf2026/site_vente_en_ligne
-#  (Cucumber/Java/Selenium → porté en Playwright/TypeScript/Node.js)
-#
 #  Page testée : /login  (US : SCRUM-11, SCRUM-14, SCRUM-18)
-#
-#  Scénarios BDD (Given / When / Then) :
-#    1.  Rendu initial – tous les éléments visibles
-#    2.  Formulaire vide → messages d'erreur
-#    3.  Email invalide → erreur de format
-#    4.  Mot de passe trop court → rejeté
-#    5.  Sélection des 4 rôles disponibles (Outline)
-#    6.  Bascule login ↔ inscription
-#    7.  Accès au formulaire "Mot de passe oublié" (SCRUM-14)
-#    8.  Retour depuis "Mot de passe oublié" → connexion
-#    9.  Lien "Accueil" dans le header
-#    10. Visibilité du mot de passe (afficher / masquer)
-#    11. Indicateur de force du mot de passe (inscription)
-#
-#  Critères d'évaluation TP4 (§5) :
-#    ✓ Déclenchement Push / PR
-#    ✓ Isolation Ubuntu latest
-#    ✓ Reporting dans l'onglet Actions
-#    ✓ Artefact HTML consultable
 # ──────────────────────────────────────────────────────────────────────────
 name: CI – Acceptance Tests (Login Page)
 
@@ -39,71 +17,38 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # ① Récupération du code
       - name: "① Checkout source"
         uses: actions/checkout@v4
 
-      # ② Environnement Node.js 22 (isolation)
       - name: "② Setup Node.js 22"
         uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: "npm"
 
-      # ③ Installation des dépendances NPM
       - name: "③ Install dependencies"
         run: npm ci
 
-      # ④ Vérification TypeScript (acceptance criterion)
       - name: "④ TypeScript strict check"
         run: npx tsc --noEmit
 
-      # ⑤ Build de production
-      #    Given : le code source est valide
-      #    When  : npm run build est exécuté
-      #    Then  : le dossier dist/ est généré sans erreur
       - name: "⑤ Build application (Given-When-Then)"
         run: npm run build
         env:
-          VITE_FIREBASE_API_KEY:             "test-api-key"
-          VITE_FIREBASE_AUTH_DOMAIN:         "test-project.firebaseapp.com"
-          VITE_FIREBASE_PROJECT_ID:          "test-project"
-          VITE_FIREBASE_STORAGE_BUCKET:      "test-project.appspot.com"
-          VITE_FIREBASE_MESSAGING_SENDER_ID: "000000000000"
-          VITE_FIREBASE_APP_ID:              "1:000000000000:web:000000000000000000000000"
+          VITE_SUPABASE_URL:      "https://glqkyojqftnqwnsmicwi.supabase.co"
+          VITE_SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdscWt5b2pxZnRucXduc21pY3dpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NjA5NzIsImV4cCI6MjA5MjUzNjk3Mn0.eh5Yn8wkL_IALx7MUw7yhO5gjqkTqbNb_VzjkhL_DD8"
 
-      # ⑥ Installation de Playwright + navigateur Chromium uniquement
       - name: "⑥ Install Playwright (Chromium)"
         run: npx playwright install --with-deps chromium
 
-      # ⑦ Démarrage du serveur de prévisualisation + exécution des tests
-      #
-      #   BDD – Feature : Authentification sur la plateforme PF-FST-SBZ
-      #
-      #   Scénario 1  : Rendu initial de la page de connexion
-      #   Scénario 2  : Formulaire vide → validation Zod
-      #   Scénario 3  : Email invalide → rejeté
-      #   Scénario 4  : Mot de passe < 6 chars → rejeté
-      #   Scénarios 5 : Sélection des 4 rôles (Étudiant / Tuteur / Coord. / Jury)
-      #   Scénario 6  : Bascule Connexion ↔ Inscription
-      #   Scénario 7  : Accès "Mot de passe oublié" (SCRUM-14)
-      #   Scénario 8  : Retour depuis réinitialisation
-      #   Scénario 9  : Lien Accueil → page racine
-      #   Scénario 10 : Afficher / masquer le mot de passe
-      #   Scénario 11 : Indicateur de force (inscription)
       - name: "⑦ Run acceptance tests – /login (Given-When-Then)"
         run: npx playwright test tests/acceptance/login.spec.ts --reporter=list
         env:
-          BASE_URL:                          "http://localhost:4173"
-          CI:                                "true"
-          VITE_FIREBASE_API_KEY:             "test-api-key"
-          VITE_FIREBASE_AUTH_DOMAIN:         "test-project.firebaseapp.com"
-          VITE_FIREBASE_PROJECT_ID:          "test-project"
-          VITE_FIREBASE_STORAGE_BUCKET:      "test-project.appspot.com"
-          VITE_FIREBASE_MESSAGING_SENDER_ID: "000000000000"
-          VITE_FIREBASE_APP_ID:              "1:000000000000:web:000000000000000000000000"
+          BASE_URL:               "http://localhost:4173"
+          CI:                     "true"
+          VITE_SUPABASE_URL:      "https://glqkyojqftnqwnsmicwi.supabase.co"
+          VITE_SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdscWt5b2pxZnRucXduc21pY3dpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY5NjA5NzIsImV4cCI6MjA5MjUzNjk3Mn0.eh5Yn8wkL_IALx7MUw7yhO5gjqkTqbNb_VzjkhL_DD8"
 
-      # ⑧ Artefact : rapport HTML Playwright (preuve d'exécution TP4)
       - name: "⑧ Upload Playwright HTML report"
         uses: actions/upload-artifact@v4
         if: always()
@@ -112,7 +57,6 @@ jobs:
           path: playwright-report/
           retention-days: 14
 
-      # ⑨ Artefact : résultats JUnit (pour intégration CI avancée)
       - name: "⑨ Upload JUnit results"
         uses: actions/upload-artifact@v4
         if: always()
@@ -121,13 +65,12 @@ jobs:
           path: test-results/junit.xml
           retention-days: 14
 
-      # ⑩ Résumé visible dans l'onglet Actions (reporting TP4)
       - name: "⑩ Acceptance summary"
         if: always()
         run: |
           echo "## 🎭 Tests d'acceptation – Page /login" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Projet référence :** [pf2026/site_vente_en_ligne](https://github.com/pf2026/site_vente_en_ligne)" >> $GITHUB_STEP_SUMMARY
+          echo "**Backend :** Supabase (migration depuis Firebase)" >> $GITHUB_STEP_SUMMARY
           echo "**Portage :** Java/Cucumber/Selenium → **Node.js/Playwright/TypeScript**" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Scénario | BDD | US Jira | Statut |" >> $GITHUB_STEP_SUMMARY

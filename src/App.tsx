@@ -37,26 +37,11 @@ export function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
-          <Route
-            path="/dashboard"
-            element={<AppLayout><Dashboard /></AppLayout>}
-          />
-          <Route
-            path="/groupe"
-            element={<AppLayout><Groupe /></AppLayout>}
-          />
-          <Route
-            path="/projets"
-            element={<AppLayout><Projets /></AppLayout>}
-          />
-          <Route
-            path="/compte-rendus"
-            element={<AppLayout><CompteRendus /></AppLayout>}
-          />
-          <Route
-            path="/soutenance"
-            element={<AppLayout><Soutenance /></AppLayout>}
-          />
+          <Route path="/dashboard"    element={<AppLayout><Dashboard /></AppLayout>} />
+          <Route path="/groupe"       element={<AppLayout><Groupe /></AppLayout>} />
+          <Route path="/projets"      element={<AppLayout><Projets /></AppLayout>} />
+          <Route path="/compte-rendus" element={<AppLayout><CompteRendus /></AppLayout>} />
+          <Route path="/soutenance"   element={<AppLayout><Soutenance /></AppLayout>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthInitializer>
