@@ -277,6 +277,9 @@ export function Home() {
           <span className="font-mono text-xs text-[var(--text-muted)]">
             PF–FST-SBZ · Université de Kairouan · SI2 2025–2026
           </span>
+          <span className="ml-2 px-1.5 py-0.5 bg-green-500/10 text-green-500 border border-green-500/20 rounded text-[10px] font-mono">
+            v0.2.3 Stable
+          </span>
         </div>
         <a
           href="https://benji-d-goat1998.atlassian.net/jira/software/projects/SCRUM/list?jql=project%20%3D%20SCRUM%20ORDER%20BY%20created%20DESC"
