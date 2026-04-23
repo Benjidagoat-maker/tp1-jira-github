@@ -1,0 +1,32 @@
+<testsuites id="" name="" tests="14" failures="0" skipped="0" errors="0" time="25.909923000000003">
+<testsuite name="login.spec.ts" timestamp="2026-04-23T23:15:32.019Z" hostname="Chromium – Desktop" tests="14" failures="0" skipped="0" time="31.118" errors="0">
+<testcase name="Feature: Page de connexion – Rendu initial › Scenario 1 – Tous les éléments de la page de connexion sont visibles" classname="login.spec.ts" time="4.782">
+</testcase>
+<testcase name="Feature: Validation du formulaire de connexion › Scenario 2 – Formulaire vide affiche les erreurs de validation" classname="login.spec.ts" time="4.738">
+</testcase>
+<testcase name="Feature: Validation du formulaire de connexion › Scenario 3 – Email au format invalide est rejeté" classname="login.spec.ts" time="4.891">
+</testcase>
+<testcase name="Feature: Validation du formulaire de connexion › Scenario 4 – Mot de passe de moins de 6 caractères est rejeté" classname="login.spec.ts" time="4.766">
+</testcase>
+<testcase name="Feature: Sélection des rôles disponibles › Scenario 5 – Rôle &quot;Étudiant&quot; est sélectionnable" classname="login.spec.ts" time="1.304">
+</testcase>
+<testcase name="Feature: Sélection des rôles disponibles › Scenario 5 – Rôle &quot;Tuteur&quot; est sélectionnable" classname="login.spec.ts" time="1.267">
+</testcase>
+<testcase name="Feature: Sélection des rôles disponibles › Scenario 5 – Rôle &quot;Coordinateur pédagogique&quot; est sélectionnable" classname="login.spec.ts" time="1.177">
+</testcase>
+<testcase name="Feature: Sélection des rôles disponibles › Scenario 5 – Rôle &quot;Membre du Jury&quot; est sélectionnable" classname="login.spec.ts" time="1.193">
+</testcase>
+<testcase name="Feature: Navigation dans la page de connexion › Scenario 6 – Bascule vers le mode inscription" classname="login.spec.ts" time="1.127">
+</testcase>
+<testcase name="Feature: Navigation dans la page de connexion › Scenario 7 – Accès au formulaire de réinitialisation du mot de passe (SCRUM-14)" classname="login.spec.ts" time="1.227">
+</testcase>
+<testcase name="Feature: Navigation dans la page de connexion › Scenario 8 – Retour depuis &quot;Mot de passe oublié&quot; vers la connexion" classname="login.spec.ts" time="1.246">
+</testcase>
+<testcase name="Feature: Navigation dans la page de connexion › Scenario 9 – Le lien Accueil ramène sur la page principale" classname="login.spec.ts" time="1.301">
+</testcase>
+<testcase name="Feature: Champ mot de passe › Scenario 10 – Bascule de visibilité du mot de passe" classname="login.spec.ts" time="1.048">
+</testcase>
+<testcase name="Feature: Champ mot de passe › Scenario 11 – Indicateur de force du mot de passe en mode inscription" classname="login.spec.ts" time="1.051">
+</testcase>
+</testsuite>
+</testsuites>

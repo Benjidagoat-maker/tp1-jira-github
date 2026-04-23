@@ -7,7 +7,6 @@ import { Eye, EyeOff, KeyRound, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
 
 const resetSchema = z.object({
   password: z.string().min(6, 'Le mot de passe doit contenir au moins 6 caractères'),
