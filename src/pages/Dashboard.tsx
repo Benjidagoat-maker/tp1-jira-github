@@ -158,8 +158,13 @@ function EtudiantDashboard() {
             {team.teamName || team.groupe}
           </p>
           <p className="text-xs text-slate-500 mt-1">
-            Scrum Master: {team.scrumMaster} · {team.developers.length} membres
+            <span className="font-medium text-slate-300">Scrum Master:</span> {team.scrumMaster}
           </p>
+          {team.developers && team.developers.length > 0 && (
+            <p className="text-xs text-slate-500 mt-0.5">
+              <span className="font-medium text-slate-300">Développeurs:</span> {team.developers.join(', ')}
+            </p>
+          )}
         </Card>
       )}
 

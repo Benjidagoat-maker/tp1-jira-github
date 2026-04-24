@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Home } from './pages/Home';
 import { Login } from './pages/Login';
+import { ResetPassword } from './pages/ResetPassword';
 import { Dashboard } from './pages/Dashboard';
 import { Groupe } from './pages/Groupe';
 import { Projets } from './pages/Projets';
@@ -37,6 +38,8 @@ export function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/__/auth/action" element={<ResetPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route
             path="/dashboard"
             element={<AppLayout><Dashboard /></AppLayout>}
